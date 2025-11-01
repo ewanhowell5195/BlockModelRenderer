@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "dependencies": {
+    "gl": "^8.1.6",
+    "node-three": "github:EvenTorset/node-three",
+    "sharp": "^0.34.3",
+    "skia-canvas": "^2.0.2"
+  }
+}

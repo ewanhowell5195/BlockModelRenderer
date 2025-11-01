@@ -1,0 +1,6 @@
+{
+  "parent": "~block/_template_chest",
+  "textures": {
+    "chest": "entity/chest/copper"
+  }
+}

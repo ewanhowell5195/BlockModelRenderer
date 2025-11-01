@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "~block/creeper_wall_head"
+    }
+  }
+}

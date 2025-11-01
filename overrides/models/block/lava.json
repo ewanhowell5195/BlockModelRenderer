@@ -1,0 +1,23 @@
+{
+  "format_version": "1.21.6",
+  "credit": "By Ewan Howell",
+  "textures": {
+    "0": "block/lava_still",
+    "1": "block/lava_flow",
+    "particle": "block/lava_still"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 14, 16],
+      "faces": {
+        "north": {"uv": [8, 0, 0, 7], "texture": "#1"},
+        "east": {"uv": [8, 0, 0, 7], "texture": "#1"},
+        "south": {"uv": [8, 0, 0, 7], "texture": "#1"},
+        "west": {"uv": [8, 0, 0, 7], "texture": "#1"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#0"},
+        "down": {"uv": [0, 0, 16, 16], "texture": "#0"}
+      }
+    }
+  ]
+}

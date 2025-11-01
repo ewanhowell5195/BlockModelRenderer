@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "~block/player_wall_head"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "parent": "~block/_template_wall_sign",
+  "textures": {
+    "sign": "entity/signs/bamboo"
+  }
+}
