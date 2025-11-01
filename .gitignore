@@ -1,4 +1,4 @@
-/node_modules
-/renders
+node_modules/
+renders/
 *.sublime-*
 model.png
