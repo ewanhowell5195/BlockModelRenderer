@@ -3,12 +3,13 @@ import fs from "node:fs"
 import path from "node:path"
 
 const assets = "C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/1.21.9"
-const outputDir = "renders"
+const outputDir = "renders/all"
 const blockDisplay = {
   rotation: [30, 225, 0],
   scale: [0.625, 0.625, 0.625]
 }
 const itemDisplay = "gui"
+const chunkSize = 32
 
 fs.mkdirSync(path.join(outputDir, "blocks"), { recursive: true })
 fs.mkdirSync(path.join(outputDir, "items"), { recursive: true })
@@ -19,7 +20,14 @@ const itemsPath = `${assets}/assets/minecraft/items`
 const blockstateFiles = fs.readdirSync(blockstatesPath).filter(f => f.endsWith(".json"))
 const itemFiles = fs.readdirSync(itemsPath).filter(f => f.endsWith(".json"))
 
-for (const file of blockstateFiles) {
+async function processChunk(files, handler) {
+  for (let i = 0; i < files.length; i += chunkSize) {
+    const chunk = files.slice(i, i + chunkSize)
+    await Promise.all(chunk.map(handler))
+  }
+}
+
+async function handleBlock(file) {
   const modelId = path.basename(file, ".json")
   const { scene, camera } = makeModelScene()
   const models = await parseBlockstate(assets, modelId, {})
@@ -32,7 +40,7 @@ for (const file of blockstateFiles) {
   console.log("Done block", modelId)
 }
 
-for (const file of itemFiles) {
+async function handleItem(file) {
   const modelId = path.basename(file, ".json")
   const { scene, camera } = makeModelScene()
   const models = await parseItemDefinition(assets, modelId, {}, itemDisplay)
@@ -44,3 +52,6 @@ for (const file of itemFiles) {
   fs.writeFileSync(`${outputDir}/items/${modelId}.png`, buffer)
   console.log("Done item", modelId)
 }
+
+await processChunk(blockstateFiles, handleBlock)
+await processChunk(itemFiles, handleItem)

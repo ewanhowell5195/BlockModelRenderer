@@ -65,7 +65,10 @@ const DEFAULT_BLOCKSTATES = {
   south: false,
   west: false,
   axis: "y",
-  face: "wall"
+  face: "wall",
+  orientation: "north_up",
+  side_chain: "unconnected",
+  powered: false
 }
 
 const UNIQUE_DEFAULT_BLOCKSTATES = {
@@ -81,9 +84,9 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
     up: false
   },
   "*_stairs": {
-    facing: "east"
+    facing: "south"
   },
-  "*_amethyst_bud|amethyst_cluster|barrel|end_rod": {
+  "*_amethyst_bud|amethyst_cluster|barrel|end_rod|*lightning_rod|*piston*": {
     facing: "up"
   },
   "*campfire": {
@@ -160,9 +163,10 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
       if (!when) return { score: 0, values: [], part, index, match: true }
 
       const conds = when.OR ?? when.AND ?? [when]
+      const isOr = !!when.OR
 
       let score = 0
-      let match = false
+      let match = isOr ? false : true
 
       let values = {}
 
@@ -182,12 +186,13 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
           }
         }
 
-        if (when.OR && matches) {
+        if (isOr && matches) {
           match = true
           break
         }
-        if (!when.OR && matches) {
-          match = true
+        if (!isOr && !matches) {
+          match = false
+          break
         }
       }
 
@@ -206,6 +211,10 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
         const apply = Array.isArray(part.apply) ? part.apply[0] : part.apply
         if (apply?.model) models.push(apply)
       })
+  }
+
+  for (const model of models) {
+    model.type = "block"
   }
 
   return models
@@ -336,10 +345,12 @@ async function loadMinecraftTexture(path) {
 export async function resolveModelData(assets, model) {
   let merged = {}
 
+  let type
   if (typeof model === "object" && !(model instanceof String)) {
     merged.x = model.x
     merged.y = model.y
     merged.uvlock = model.uvlock
+    type = model.type
     model = model.model
   }
 
@@ -388,6 +399,7 @@ export async function resolveModelData(assets, model) {
           }
         }
       } else if (key === "display") {
+        if (type === "block") continue
         merged.display ??= {}
         for (const [key, value] of Object.entries(layer.display)) {
           if (!(key in merged.display)) {
@@ -476,22 +488,22 @@ export async function resolveModelData(assets, model) {
 }
 
 const COLOURS = {
-  white: "#f9fffe",
-  orange: "#f9801d",
-  magenta: "#c74ebd",
-  light_blue: "#3ab3da",
-  yellow: "#fed83d",
-  lime: "#80c71f",
-  pink: "#f38baa",
-  gray: "#474f52",
-  light_gray: "#9d9d97",
-  cyan: "#169c9c",
-  purple: "#8932b8",
+  black: "#1d1d21",
   blue: "#3c44aa",
   brown: "#835432",
+  cyan: "#169c9c",
+  gray: "#474f52",
   green: "#5e7c16",
+  light_blue: "#3ab3da",
+  light_gray: "#9d9d97",
+  lime: "#80c71f",
+  magenta: "#c74ebd",
+  orange: "#f9801d",
+  pink: "#f38baa",
+  purple: "#8932b8",
   red: "#b02e26",
-  black: "#1d1d21"
+  white: "#f9fffe",
+  yellow: "#fed83d"
 }
 
 async function resolveSpecialModel(assets, data) {
@@ -543,7 +555,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
       const ctx = canvas.getContext("2d")
       ctx.drawImage(image, 0, 0)
       ctx.globalCompositeOperation = "multiply"
-      ctx.fillStyle = tint
+      ctx.fillStyle = COLOURS[tint] ?? tint
       ctx.fillRect(0, 0, image.width, image.height)
       ctx.globalCompositeOperation = "destination-in"
       ctx.drawImage(image, 0, 0)

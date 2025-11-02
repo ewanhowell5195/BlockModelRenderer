@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "~block/banner/yellow_banner"
+    }
+  }
+}

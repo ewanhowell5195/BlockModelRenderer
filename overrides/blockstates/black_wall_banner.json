@@ -1,7 +1,7 @@
 {
   "variants": {
     "": {
-      "model": "~block/wall_banner"
+      "model": "~block/banner/black_wall_banner"
     }
   }
 }
