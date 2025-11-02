@@ -531,6 +531,7 @@ async function resolveSpecialModel(assets, data) {
     model.textures = {
       bed: `entity/bed/${normalize(data.texture)}`
     }
+    rotation = [0, 180]
   } else if (data.type === "chest") {
     model.textures = {
       chest: `entity/chest/${normalize(data.texture)}`
