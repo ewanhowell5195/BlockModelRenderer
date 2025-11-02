@@ -1,7 +1,3 @@
 {
-  "parent": "~block/copper_golem_statue/_template_copper_golem_statue",
-  "textures": {
-    "golem": "entity/copper_golem/copper_golem",
-    "eyes": "entity/copper_golem/copper_golem_eyes"
-  }
+  "parent": "~block/copper_golem_statue/_template_copper_golem_statue"
 }
