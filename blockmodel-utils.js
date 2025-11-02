@@ -125,8 +125,7 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
   const overridePath = `${__dirname}/overrides/blockstates/${item}.json`
   const assetPath = `${assets}/assets/${namespace}/blockstates/${item}.json`
   const path = await fileExists(overridePath) ? overridePath : assetPath
-  const content = await fs.promises.readFile(path, "utf8")
-  const json = JSON.parse(content)
+  const json = JSON.parse(await fs.promises.readFile(path, "utf8"))
 
   const models = []
 
@@ -227,8 +226,7 @@ function normalize(val) {
 export async function parseItemDefinition(assets, itemId, data = {}, display = "gui") {
   const { namespace, item } = resolveNamespace(itemId)
   const filePath = `${assets}/assets/${namespace}/items/${item}.json`
-  const content = await fs.promises.readFile(filePath, "utf8")
-  const json = JSON.parse(content)
+  const json = JSON.parse(await fs.promises.readFile(filePath, "utf8"))
   return await resolveItemModel(json.model, assets, data, display)
 }
 
@@ -314,8 +312,7 @@ async function loadMinecraftTexture(path) {
 
   let meta
   try {
-    const content = await fs.promises.readFile(metaPath, "utf8")
-    meta = JSON.parse(content)?.animation ?? {}
+    meta = JSON.parse(await fs.promises.readFile(metaPath, "utf8"))?.animation ?? {}
   } catch {
     return image
   }
@@ -355,38 +352,52 @@ export async function resolveModelData(assets, model) {
   }
 
   const { namespace, item } = resolveNamespace(model)
-  const stack = []
 
+  let stack = []
   let currentNamespace = namespace
   let currentItem = item
   let currentPath
 
-  while (true) {
-    const overridePath = `${__dirname}/overrides/models/${currentItem}.json`
-    const hasOverride = await fileExists(overridePath)
+  try {
+    while (true) {
+      const overridePath = `${__dirname}/overrides/models/${currentItem}.json`
+      const hasOverride = await fileExists(overridePath)
 
-    if (hasOverride) {
-      currentPath = overridePath
-      merged.overridden = true
-    } else {
-      currentPath = `${assets}/assets/${currentNamespace}/models/${currentItem}.json`
+      if (hasOverride) {
+        currentPath = overridePath
+        merged.overridden = true
+      } else {
+        currentPath = `${assets}/assets/${currentNamespace}/models/${currentItem}.json`
+      }
+
+      const json = JSON.parse(await fs.promises.readFile(currentPath, "utf8"))
+      stack.push(json)
+
+      if (!json.parent || json.parent.startsWith("builtin")) break
+
+      const parentId = json.parent.replace(/^minecraft:/, "")
+      const resolved = resolveNamespace(parentId)
+      currentNamespace = resolved.namespace
+      currentItem = resolved.item
     }
 
-    const content = await fs.promises.readFile(currentPath, "utf8")
-    const json = JSON.parse(content)
-    stack.push(json)
-
-    if (!json.parent || json.parent.startsWith("builtin")) break
-
-    const parentId = json.parent.replace(/^minecraft:/, "")
-    const resolved = resolveNamespace(parentId)
-    currentNamespace = resolved.namespace
-    currentItem = resolved.item
+  } catch {
+    stack = [JSON.parse(await fs.promises.readFile(`${__dirname}/overrides/models/~missing.json`, "utf8"))]
   }
 
   if (model.special) {
-    stack.push(await resolveSpecialModel(assets, model.special))
-    merged.y = 180
+    const resolved = await resolveSpecialModel(assets, model.special)
+    if (resolved) {
+      stack.push(resolved.model)
+      merged.y = 180
+      if (resolved.rotation) {
+        merged.x = resolved.rotation[0]
+        merged.y += resolved.rotation[1]
+      }
+      if (resolved.offset) {
+        merged.offset = resolved.offset
+      }
+    }
   }
 
   // Merge down the chain
@@ -511,8 +522,9 @@ async function resolveSpecialModel(assets, data) {
   if (data.type === "head") {
     data.type = `${data.kind}_${data.kind.includes("skeleton") ? "skull" : "head"}`
   }
-  if (!await fileExists(`${__dirname}/overrides/models/~item/${data.type}.json`)) return {}
+  if (!await fileExists(`${__dirname}/overrides/models/~item/${data.type}.json`)) return
   const model = await resolveModelData(assets, `~item/${data.type}`)
+  let offset, rotation
   if (data.type === "banner") {
     model.tints = [COLOURS[data.color]]
   } else if (data.type === "bed") {
@@ -527,8 +539,18 @@ async function resolveSpecialModel(assets, data) {
     model.textures = {
       shulker_box: `entity/shulker/${normalize(data.texture)}`
     }
+  } else if (data.type === "copper_golem_statue") {
+    model.textures = {
+      golem: `${normalize(data.texture).slice(9).slice(0, -4)}`
+    }
+    offset = [0, -3.8]
+    rotation = [180, 180]
   }
-  return model
+  return {
+    model,
+    offset,
+    rotation
+  }
 }
 
 export async function loadModel(scene, assets, model, display = "gui") {
@@ -713,12 +735,19 @@ export async function loadModel(scene, assets, model, display = "gui") {
   }
 
   const rootGroup = new THREE.Group()
+  const displayGroup = new THREE.Group()
   const containerGroup = new THREE.Group()
-  rootGroup.add(containerGroup)
-  if (model.x || model.y || true) {
+  rootGroup.add(displayGroup)
+  displayGroup.add(containerGroup)
+  
+  if (model.x || model.y) {
     const x = THREE.MathUtils.degToRad(-(model?.x ?? 0))
     const y = THREE.MathUtils.degToRad(model?.y ?? 0)
     containerGroup.rotation.set(x, y, 0, "YXZ")
+  }
+
+  if (model.offset) {
+    rootGroup.position.set(...model.offset)
   }
 
   for (const element of model.elements || []) {
@@ -895,19 +924,19 @@ export async function loadModel(scene, assets, model, display = "gui") {
         THREE.MathUtils.degToRad(settings.rotation[0]),
         THREE.MathUtils.degToRad(-settings.rotation[1]),
         THREE.MathUtils.degToRad(-settings.rotation[2]),
-        rootGroup.rotation.order
+        displayGroup.rotation.order
       )
-      rootGroup.quaternion.multiply(new THREE.Quaternion().setFromEuler(delta))
+      displayGroup.quaternion.multiply(new THREE.Quaternion().setFromEuler(delta))
     }
     if (settings.translation) {
-      rootGroup.position.set(
+      displayGroup.position.set(
         -settings.translation[0],
         settings.translation[1],
         settings.translation[2]
       )
     }
     if (settings.scale) {
-      rootGroup.scale.set(
+      displayGroup.scale.set(
         settings.scale[0],
         settings.scale[1],
         settings.scale[2]
