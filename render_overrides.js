@@ -27,14 +27,17 @@ async function processChunk(files, handler) {
   }
 }
 
+const skip = file => ["air.json", "cave_air.json", "void_air.json"].includes(file)
+
 async function handleBlock(file) {
+  if (skip(file)) return
   const modelId = path.basename(file, ".json")
   const { scene, camera } = makeModelScene()
   const models = await parseBlockstate(assets, modelId, {})
   let override
   for (const model of models) {
     const resolved = await resolveModelData(assets, model)
-    if (resolved.overridden) override = true
+    if (resolved.overridden || !resolved.elements) override = true
     await loadModel(scene, assets, resolved, blockDisplay)
   }
   if (!override) return
@@ -44,13 +47,14 @@ async function handleBlock(file) {
 }
 
 async function handleItem(file) {
+  if (skip(file)) return
   const modelId = path.basename(file, ".json")
   const { scene, camera } = makeModelScene()
   const models = await parseItemDefinition(assets, modelId, {}, itemDisplay)
   let override
   for (const model of models) {
     const resolved = await resolveModelData(assets, model)
-    if (resolved.overridden) override = true
+    if (resolved.overridden || !resolved.elements) override = true
     await loadModel(scene, assets, resolved, itemDisplay)
   }
   if (!override) return
@@ -60,4 +64,4 @@ async function handleItem(file) {
 }
 
 await processChunk(blockstateFiles, handleBlock)
-// await processChunk(itemFiles, handleItem)
+await processChunk(itemFiles, handleItem)
