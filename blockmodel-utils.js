@@ -386,6 +386,7 @@ export async function resolveModelData(assets, model) {
 
   if (model.special) {
     stack.push(await resolveSpecialModel(assets, model.special))
+    merged.y = 180
   }
 
   // Merge down the chain
@@ -507,6 +508,9 @@ const COLOURS = {
 }
 
 async function resolveSpecialModel(assets, data) {
+  if (data.type === "head") {
+    data.type = `${data.kind}_${data.kind.includes("skeleton") ? "skull" : "head"}`
+  }
   if (!await fileExists(`${__dirname}/overrides/models/~item/${data.type}.json`)) return {}
   const model = await resolveModelData(assets, `~item/${data.type}`)
   if (data.type === "banner") {

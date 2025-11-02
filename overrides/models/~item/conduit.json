@@ -1,25 +1,3 @@
 {
-  "format_version": "1.21.6",
-  "credit": "By Ewan Howell",
-  "texture_size": [32, 16],
-  "textures": {
-    "particle": "entity/conduit/base",
-    "conduit": "entity/conduit/base"
-  },
-  "elements": [
-    {
-      "name": "base",
-      "from": [5, 5, 5],
-      "to": [11, 11, 11],
-      "rotation": {"angle": 0, "axis": "y", "origin": [8, 8, 8]},
-      "faces": {
-        "north": {"uv": [3, 6, 6, 12], "rotation": 180, "texture": "#conduit"},
-        "east": {"uv": [6, 6, 9, 12], "rotation": 180, "texture": "#conduit"},
-        "south": {"uv": [9, 6, 12, 12], "rotation": 180, "texture": "#conduit"},
-        "west": {"uv": [0, 6, 3, 12], "rotation": 180, "texture": "#conduit"},
-        "up": {"uv": [9, 0, 6, 6], "rotation": 180, "texture": "#conduit"},
-        "down": {"uv": [6, 6, 3, 0], "rotation": 180, "texture": "#conduit"}
-      }
-    }
-  ]
+  "parent": "block/conduit"
 }
