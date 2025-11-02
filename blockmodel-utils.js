@@ -83,7 +83,7 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
   fire: {
     up: false
   },
-  "*_stairs": {
+  "*_stairs|*_glazed_terracotta|cocoa": {
     facing: "south"
   },
   "*_amethyst_bud|amethyst_cluster|barrel|end_rod|*lightning_rod|*piston*": {
@@ -91,9 +91,6 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
   },
   "*campfire": {
     lit: true
-  },
-  "cocoa": {
-    facing: "south"
   },
   glow_lichen: {
     up: false,
