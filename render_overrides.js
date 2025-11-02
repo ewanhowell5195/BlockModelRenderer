@@ -27,7 +27,7 @@ async function processChunk(files, handler) {
   }
 }
 
-const skip = file => ["air.json", "cave_air.json", "void_air.json"].includes(file)
+const skip = file => ["air.json", "cave_air.json", "void_air.json", "moving_piston.json"].includes(file)
 
 async function handleBlock(file) {
   if (skip(file)) return

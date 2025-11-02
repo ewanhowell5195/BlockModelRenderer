@@ -1,3 +1,2 @@
 block model of bed should only render half
 block entity blockstates
-check shulker boxes are the right way around
