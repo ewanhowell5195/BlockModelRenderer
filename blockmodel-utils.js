@@ -99,9 +99,12 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
   grindstone: {
     face: "floor"
   },
-  "vine": {
+  vine: {
     up: false,
     south: true
+  },
+  pale_moss_carpet: {
+    bottom: true
   }
 }
 
