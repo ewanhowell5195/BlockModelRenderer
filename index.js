@@ -1,7 +1,7 @@
 import { makeModelScene, renderModelScene, parseBlockstate, parseItemDefinition, resolveModelData, loadModel } from "./blockmodel-utils.js"
 import fs from "node:fs"
 
-const assets = "C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/1.21.9"
+const assets = "C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/1.21.10"
 const model = "player_head"
 const type = "block"
 const display = {
@@ -21,11 +21,8 @@ if (type === "block") {
   models = await parseItemDefinition(assets, model, data, display)
 }
 
-console.log(models)
-
 for (const model of models) {
   const resolved = await resolveModelData(assets, model)
-  console.log(resolved)
   await loadModel(scene, assets, resolved, display)
 }
 

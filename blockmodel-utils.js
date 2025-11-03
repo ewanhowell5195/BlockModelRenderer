@@ -92,12 +92,16 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
   "*campfire": {
     lit: true
   },
-  glow_lichen: {
+  "glow_lichen|sculk_vein|resin_clump": {
     up: false,
     down: true
   },
   grindstone: {
     face: "floor"
+  },
+  "vine": {
+    up: false,
+    south: true
   }
 }
 
@@ -210,6 +214,9 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
   }
 
   for (const model of models) {
+    if (model.x && model.x % 90 !== 0 || model.y && model.y % 90 !== 0) {
+      return ["~missing.json"]
+    }
     model.type = "block"
   }
 
@@ -356,6 +363,11 @@ export async function resolveModelData(assets, model) {
   let currentPath
 
   try {
+    if (merged.x && merged.x % 90 !== 0 || merged.y && merged.y % 90 !== 0) {
+      delete merged.x
+      delete merged.y
+      throw new Error
+    }
     while (true) {
       const overridePath = `${__dirname}/overrides/models/${currentItem}.json`
       const hasOverride = await fileExists(overridePath)
@@ -377,7 +389,6 @@ export async function resolveModelData(assets, model) {
       currentNamespace = resolved.namespace
       currentItem = resolved.item
     }
-
   } catch {
     stack = [JSON.parse(await fs.promises.readFile(`${__dirname}/overrides/models/~missing.json`, "utf8"))]
   }
@@ -814,20 +825,82 @@ export async function loadModel(scene, assets, model, display = "gui") {
       else if (rot === 270) uv = [uv[2], uv[0], uv[3], uv[1]]
 
       if (model?.uvlock) {
-        let angle = 0
-        if ((faceName === "up" || faceName === "down") && model?.y) {
-          angle = -model.y
-        } else if ((faceName === "north" || faceName === "south") && model?.x) {
-          angle = -model.x
-        }
+        let newDirection = faceName
 
-        if (angle % 360 !== 0) {
+        if (model.x) {
+          const x = model.x % 360
+          let angle = 0
+
+          switch (faceName) {
+            case "east":
+              angle = model.x
+              break
+            case "west":
+              angle = -model.x
+              break
+            case "north":
+              if (x === 90) {
+                newDirection = "up"
+              } else if (x === 180) {
+                newDirection = "south"
+                angle = 180
+              } else {
+                newDirection = "down"
+                angle = 180
+              }
+              break
+            case "south":
+              if (x === 90) {
+                newDirection = "down"
+              } else if (x === 180) {
+                newDirection = "north"
+                angle = 180
+              } else {
+                newDirection = "up"
+                angle = 180
+              }
+              break
+            case "up":
+              if (x === 90) {
+                newDirection = "north"
+                angle = 180
+              } else if (x === 180) {
+                newDirection = "down"
+              } else {
+                newDirection = "south"
+              }
+              break
+            case "down":
+              if (x === 90) {
+                newDirection = "south"
+                angle = 180
+              } else if (x === 180) {
+                newDirection = "up"
+              } else {
+                newDirection = "north"
+              }
+          }
+
           const center = new THREE.Vector2(8, 8)
+          const rad = THREE.MathUtils.degToRad(angle)
           uv = uv.map(([u, v]) => {
             const vec = new THREE.Vector2(u, v)
-            vec.rotateAround(center, THREE.MathUtils.degToRad(angle))
+            vec.rotateAround(center, rad)
             return [vec.x, vec.y]
           })
+        }
+
+        if (model.y) {
+          if (newDirection === "up" || newDirection === "down") {
+            const angle = model.y
+            const center = new THREE.Vector2(8, 8)
+            const rad = THREE.MathUtils.degToRad(angle)
+            uv = uv.map(([u, v]) => {
+              const vec = new THREE.Vector2(u, v)
+              vec.rotateAround(center, rad)
+              return [vec.x, vec.y]
+            })
+          }
         }
       }
 
