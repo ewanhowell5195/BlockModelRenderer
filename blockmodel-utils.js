@@ -105,6 +105,9 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
   },
   pale_moss_carpet: {
     bottom: true
+  },
+  hopper: {
+    facing: "down"
   }
 }
 
