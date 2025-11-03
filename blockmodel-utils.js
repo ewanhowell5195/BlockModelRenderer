@@ -772,6 +772,14 @@ export async function loadModel(scene, assets, model, display = "gui") {
 
     const geometry = new THREE.BoxGeometry(size.x, size.y, size.z)
 
+    if (element.rotation?.rescale) {
+      const angle = Math.abs(element.rotation.angle)
+      const rescale = 1 / Math.cos(THREE.MathUtils.degToRad(angle > 45 ? 90 - angle : angle))
+      const scale = new THREE.Vector3(rescale, rescale, rescale)
+      scale[element.rotation.axis || "y"] = 1
+      geometry.scale(scale.x, scale.y, scale.z)
+    }
+
     const faceOrder = ["west", "east", "up", "down", "south", "north"]
 
     const colorCount = geometry.attributes.position.count
