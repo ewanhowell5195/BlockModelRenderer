@@ -10,6 +10,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const { THREE, loadTexture } = (await getTHREE({ Canvas, Image, ImageData, fetch, Request, Response, Headers }))
 
+const missing = await loadImage(`${__dirname}/defaults/missing.png`)
+
 export function makeModelScene() {
   const scene = new THREE.Scene()
   const camera = new THREE.OrthographicCamera(-8, 8, 8, -8, 0.01, 100)
@@ -233,11 +235,55 @@ function normalize(val) {
   return String(val).replace(/^minecraft:/, "")
 }
 
+async function getColorMapTint(assets, mapName, temperature, downfall) {
+  if (isNaN(temperature) || isNaN(downfall)) return "#FF00FF"
+
+  let filePath = `${assets}/assets/minecraft/textures/colormap/${mapName}.png`
+  if (!await fileExists(filePath)) {
+    filePath = `${__dirname}/defaults/colormap/${mapName}.png`
+  }
+  const image = await loadImage(filePath)
+  const canvas = new Canvas(256, 256)
+  const ctx = canvas.getContext("2d")
+
+  if (image.width !== 256 || image.height !== 256) return "#FF00FF"
+  ctx.drawImage(image, 0, 0)
+
+  const x = Math.round((1 - temperature) * 255)
+  const y = Math.round((1 - downfall * temperature) * 255)
+
+  if (x < 0 || x > 255 || y < 0 || y > 255) return "#FF00FF"
+
+  const { data } = ctx.getImageData(x, y, 1, 1)
+  const [r, g, b] = data
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`.toUpperCase()
+}
+
 export async function parseItemDefinition(assets, itemId, data = {}, display = "gui") {
   const { namespace, item } = resolveNamespace(itemId)
   const filePath = `${assets}/assets/${namespace}/items/${item}.json`
   const json = JSON.parse(await fs.promises.readFile(filePath, "utf8"))
-  return await resolveItemModel(json.model, assets, data, display)
+  const models = await resolveItemModel(json.model, assets, data, display)
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i]
+    if (model.tints) {
+      const tints = []
+      for (const tint of model.tints) {
+        const type = normalize(tint.type)
+        if (type === "grass") {
+          tints.push(await getColorMapTint(assets, "grass", tint.temperature, tint.downfall))
+        } else if (tint.value || tint.default) {
+          tints.push("#" + ((tint.value ?? tint.default) >>> 0).toString(16).padStart(8, "0").slice(2))
+        } else {
+          tints.push("#FFFFFF")
+        }
+      }
+      model.tints = tints
+    } else if (Object.keys(model).length === 1) {
+      models[i] = model.model
+    }
+  }
+  return models
 }
 
 function resolveItemModel(def, assets, data, display) {
@@ -245,9 +291,11 @@ function resolveItemModel(def, assets, data, display) {
     const type = normalize(def.type)
 
     if (type === "special") {
-      const model = new String(def.base)
-      def.model.type = normalize(def.model.type)
+      const model = {
+        model: def.base
+      }
       model.special = def.model
+      model.special.type = normalize(model.special.type)
       return [model]
     }
 
@@ -297,7 +345,7 @@ function resolveItemModel(def, assets, data, display) {
     }
 
     if (type === "model") {
-      return [def.model]
+      return [def]
     }
 
     return []
@@ -353,11 +401,8 @@ export async function resolveModelData(assets, model) {
   let merged = {}
 
   let type
-  if (typeof model === "object" && !(model instanceof String)) {
-    merged.x = model.x
-    merged.y = model.y
-    merged.uvlock = model.uvlock
-    type = model.type
+  if (typeof model === "object") {
+    merged = structuredClone(model)
     model = model.model
   }
 
@@ -399,8 +444,8 @@ export async function resolveModelData(assets, model) {
     stack = [JSON.parse(await fs.promises.readFile(`${__dirname}/overrides/models/~missing.json`, "utf8"))]
   }
 
-  if (model.special) {
-    const resolved = await resolveSpecialModel(assets, model.special)
+  if (merged.special) {
+    const resolved = await resolveSpecialModel(assets, merged.special)
     if (resolved) {
       stack.push(resolved.model)
       merged.y = 180
@@ -412,9 +457,9 @@ export async function resolveModelData(assets, model) {
         merged.offset = resolved.offset
       }
     }
+    delete merged.special
   }
 
-  // Merge down the chain
   for (const layer of stack) {
     for (const key in layer) {
       if (key === "textures") {
@@ -425,7 +470,7 @@ export async function resolveModelData(assets, model) {
           }
         }
       } else if (key === "display") {
-        if (type === "block") continue
+        if (merged.type === "block") continue
         merged.display ??= {}
         for (const [key, value] of Object.entries(layer.display)) {
           if (!(key in merged.display)) {
@@ -438,7 +483,6 @@ export async function resolveModelData(assets, model) {
     }
   }
 
-  // Fully resolve textures
   for (const key in merged.textures) {
     let value = merged.textures[key]
     while (value?.startsWith("#")) {
@@ -448,67 +492,70 @@ export async function resolveModelData(assets, model) {
     merged.textures[key] = value
   }
 
-  // Handle builtin/generated
-  if (stack[stack.length - 1].parent === "builtin/generated") {
-    const texRef = merged.textures?.layer0
-    if (!texRef) return merged
-    const { namespace, item } = resolveNamespace(texRef)
-    const texPath = `${assets}/assets/${namespace}/textures/${item}.png`
-    const image = await loadMinecraftTexture(texPath)
-    const width = image.width
-    const height = image.height
-    const depth = 16 / Math.max(width, height)
-    const elements = []
-    const canvas = new Canvas(width, height)
-    const ctx = canvas.getContext("2d")
-    ctx.drawImage(image, 0, 0, width, height)
-    const imageData = ctx.getImageData(0, 0, width, height).data
-    
-    // Helper function to check if a pixel is opaque
-    const isOpaque = (x, y) => {
-      if (x < 0 || x >= width || y < 0 || y >= height) return false
-      const i = (y * width + x) * 4
-      return imageData[i + 3] >= 1
-    }
-    
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const i = (y * width + x) * 4
-        const alpha = imageData[i + 3]
-        if (alpha === 0) continue
+  if (normalize(stack[stack.length - 1].parent) === "builtin/generated" && !merged.elements) {
+    merged.elements = []
+    for (const [key, texRef] of Object.entries(merged.textures)) {
+      const match = key.match(/^layer(\d+)$/)
+      if (match) {
+        const tintIndex = Number(match[1])
+        const texId = "#" + key
+        const { namespace, item } = resolveNamespace(texRef)
+        const texPath = `${assets}/assets/${namespace}/textures/${item}.png`
+        const image = await loadMinecraftTexture(texPath)
+        const width = image.width
+        const height = image.height
+        const depth = 16 / Math.max(width, height)
+        const elements = []
+        const canvas = new Canvas(width, height)
+        const ctx = canvas.getContext("2d")
+        ctx.drawImage(image, 0, 0, width, height)
+        const imageData = ctx.getImageData(0, 0, width, height).data
         
-        const x1 = x * depth
-        const y1 = 16 - (y + 1) * depth
-        const x2 = x1 + depth
-        const y2 = y1 + depth
-        
-        // Calculate UV coordinates for this pixel
-        const u1 = x / width * 16
-        const v1 = y / height * 16
-        const u2 = (x + 1) / width * 16
-        const v2 = (y + 1) / height * 16
-        
-        // Only include faces that are exposed (not touching another opaque pixel)
-        const faces = {}
-        
-        if (!isOpaque(x, y - 1)) faces.up = { texture: "#layer0", uv: [u1, v1, u2, v2] }      // pixel above
-        if (!isOpaque(x, y + 1)) faces.down = { texture: "#layer0", uv: [u1, v1, u2, v2] }    // pixel below
-        if (!isOpaque(x - 1, y)) faces.west = { texture: "#layer0", uv: [u1, v1, u2, v2] }    // pixel left
-        if (!isOpaque(x + 1, y)) faces.east = { texture: "#layer0", uv: [u1, v1, u2, v2] }    // pixel right
-        
-        // North and south faces are always visible (front and back of the extruded texture)
-        faces.north = { texture: "#layer0", uv: [u1, v1, u2, v2] }
-        faces.south = { texture: "#layer0", uv: [u1, v1, u2, v2] }
-        
-        elements.push({
-          from: [x1, y1, 8 - depth / 2],
-          to: [x2, y2, 8 + depth / 2],
-          faces: faces
-        })
+        function isOpaque(x, y) {
+          if (x < 0 || x >= width || y < 0 || y >= height) return false
+          const i = (y * width + x) * 4
+          return imageData[i + 3] >= 1
+        }
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4
+            const alpha = imageData[i + 3]
+            if (alpha === 0) continue
+            
+            const x1 = x * depth
+            const y1 = 16 - (y + 1) * depth
+            const x2 = x1 + depth
+            const y2 = y1 + depth
+            
+            const u1 = x / width * 16
+            const v1 = y / height * 16
+            const u2 = (x + 1) / width * 16
+            const v2 = (y + 1) / height * 16
+            
+            const faces = {}
+            
+            if (!isOpaque(x, y - 1)) faces.up = { texture: texId, uv: [u1, v1, u2, v2], tintindex: tintIndex }
+            if (!isOpaque(x, y + 1)) faces.down = { texture: texId, uv: [u1, v1, u2, v2], tintindex: tintIndex }
+            if (!isOpaque(x - 1, y)) faces.west = { texture: texId, uv: [u1, v1, u2, v2], tintindex: tintIndex }
+            if (!isOpaque(x + 1, y)) faces.east = { texture: texId, uv: [u1, v1, u2, v2], tintindex: tintIndex }
+            
+            faces.north = { texture: texId, uv: [u1, v1, u2, v2], tintindex: tintIndex }
+            faces.south = { texture: texId, uv: [u1, v1, u2, v2], tintindex: tintIndex }
+            
+            merged.elements.push({
+              from: [x1, y1, 8 - depth / 2],
+              to: [x2, y2, 8 + depth / 2],
+              faces: faces
+            })
+          }
+        }
       }
     }
-    merged.elements = elements
   }
+
+  delete merged.parent
+  delete merged.model
 
   return merged
 }
@@ -585,10 +632,10 @@ export async function loadModel(scene, assets, model, display = "gui") {
       if (await fileExists(path)) {
         image = await loadMinecraftTexture(path)
       } else {
-        image = await loadImage("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACAQMAAABIeJ9nAAAABlBMVEUAAAD7PvmZUnQ7AAAADElEQVR4XmNoYHAAAAHEAMFho6CnAAAAAElFTkSuQmCC")
+        image = missing
       }
     } else {
-      image = await loadImage("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACAQMAAABIeJ9nAAAABlBMVEUAAAD7PvmZUnQ7AAAADElEQVR4XmNoYHAAAAHEAMFho6CnAAAAAElFTkSuQmCC")
+      image = missing
     }
 
     if (tint) {
@@ -950,10 +997,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
 
       let tint
       if (model.tints) {
-        const m = texRef.match(/^#layer(\d+)$/)
-        if (m) {
-          tint = model.tints[m[1]]
-        }
+        tint = model.tints[face.tintindex]
       }
 
       while (texRef && texRef.startsWith("#")) {
