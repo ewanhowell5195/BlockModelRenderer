@@ -110,6 +110,11 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
   },
   hopper: {
     facing: "down"
+  },
+  brewing_stand: {
+    has_bottle_0: false,
+    has_bottle_1: false,
+    has_bottle_2: false
   }
 }
 
