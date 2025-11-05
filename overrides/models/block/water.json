@@ -1,27 +1,21 @@
 {
-  "format_version": "1.21.6",
-  "credit": "By Ewan Howell",
+  "parent": "block/block",
   "textures": {
-    "layer0": "block/water_still",
-    "layer1": "block/water_flow",
-    "particle": "block/water_still"
+    "still": "block/water_still",
+    "flow": "block/water_flow"
   },
   "elements": [
     {
       "from": [0, 0, 0],
       "to": [16, 14, 16],
       "faces": {
-        "north": {"uv": [8, 0, 0, 7], "texture": "#layer1"},
-        "east": {"uv": [8, 0, 0, 7], "texture": "#layer1"},
-        "south": {"uv": [8, 0, 0, 7], "texture": "#layer1"},
-        "west": {"uv": [8, 0, 0, 7], "texture": "#layer1"},
-        "up": {"uv": [0, 0, 16, 16], "texture": "#layer0"},
-        "down": {"uv": [0, 0, 16, 16], "texture": "#layer0"}
+        "north": {"uv": [8, 0, 0, 7], "texture": "#flow", "tintindex": 0},
+        "east": {"uv": [8, 0, 0, 7], "texture": "#flow", "tintindex": 0},
+        "south": {"uv": [8, 0, 0, 7], "texture": "#flow", "tintindex": 0},
+        "west": {"uv": [8, 0, 0, 7], "texture": "#flow", "tintindex": 0},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#still", "tintindex": 0},
+        "down": {"uv": [0, 0, 16, 16], "texture": "#still", "tintindex": 0}
       }
     }
-  ],
-  "tints": [
-    "#3F76E4",
-    "#3F76E4"
   ]
 }

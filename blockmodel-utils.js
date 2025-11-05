@@ -70,11 +70,13 @@ const DEFAULT_BLOCKSTATES = {
   face: "wall",
   orientation: "north_up",
   side_chain: "unconnected",
-  powered: false
+  powered: false,
+  segment_amount: 4,
+  flower_amount: 4
 }
 
 const UNIQUE_DEFAULT_BLOCKSTATES = {
-  "*_mushroom_block": {
+  "*_mushroom_block|mushroom_stem": {
     north: true,
     east: true,
     south: true,
@@ -115,6 +117,15 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
     has_bottle_0: false,
     has_bottle_1: false,
     has_bottle_2: false
+  },
+  redstone_wire: {
+    north: "side",
+    south: "side",
+    east: "side",
+    west: "side"
+  },
+  "*cauldron": {
+    level: 3
   }
 }
 
@@ -133,6 +144,35 @@ function getUniqueDefault(blockstate) {
 
   return {}
 }
+
+const GRASS_BLOCKS = [
+  "bush",
+  "fern",
+  "grass_block",
+  "large_fern",
+  "pink_petals",
+  "potted_fern",
+  "short_grass",
+  "sugar_cane",
+  "tall_grass",
+  "wildflowers"
+]
+const FOLIAGE_BLOCKS = [
+  "acacia_leaves",
+  "dark_oak_leaves",
+  "jungle_leaves",
+  "mangrove_leaves",
+  "oak_leaves",
+  "vine"
+]
+const DRY_FOLIAGE_BLOCKS = [
+  "leaf_litter"
+]
+const WATER_BLOCKS = [
+  "bubble_column",
+  "water_cauldron",
+  "water"
+]
 
 export async function parseBlockstate(assets, blockstate, data = {}) {
   const { namespace, item } = resolveNamespace(blockstate)
@@ -171,6 +211,8 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
       models.push(scored[0].model)
     }
   } else if (json.multipart) {
+    const ranges = new Set
+    
     const scoredParts = json.multipart.map((part, index) => {
       const when = part.when
       if (!when) return { score: 0, values: [], part, index, match: true }
@@ -181,13 +223,19 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
       let score = 0
       let match = isOr ? false : true
 
-      let values = {}
+      const values = {}
 
       for (const cond of conds) {
         const matches = Object.entries(cond).every(([k, v]) => {
           const allowed = v.split("|")
           const raw = data[k] ?? getUniqueDefault(blockstate)[k] ?? DEFAULT_BLOCKSTATES[k]
-          const actuals = Array.isArray(raw) ? raw.map(e => e.toString()) : [raw?.toString()]
+          let actuals
+          if (Array.isArray(raw)) {
+            actuals = raw.map(e => e.toString())
+            ranges.add(k)
+          } else {
+            actuals = [raw?.toString()]
+          }
           const matchIndex = actuals.findIndex(val => allowed.includes(val ?? "none"))
           if (matchIndex !== -1) score += actuals.length - matchIndex
           return matchIndex !== -1
@@ -219,7 +267,9 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
       .forEach(({ values, part }) => {
         if (values.some(([k, v]) => usedKeyValues[k] && usedKeyValues[k] !== v)) return
         for (const [key, value] of values) {
-          usedKeyValues[key] = value
+          if (ranges.has(key)) {
+            usedKeyValues[key] = value
+          }
         }
         const apply = Array.isArray(part.apply) ? part.apply[0] : part.apply
         if (apply?.model) models.push(apply)
@@ -230,7 +280,61 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
     if (model.x && model.x % 90 !== 0 || model.y && model.y % 90 !== 0) {
       return ["~missing.json"]
     }
+
     model.type = "block"
+
+    if (GRASS_BLOCKS.includes(item)) {
+      model.tints = [await getColorMapTint(assets, "grass", 0.5, 1)]
+      if (item === "pink_petals" || item === "wildflowers") {
+        model.tints = ["#FFFFFF", model.tints[0]]
+      }
+    } else if (FOLIAGE_BLOCKS.includes(item)) {
+      model.tints = [await getColorMapTint(assets, "foliage", 0.5, 1)]
+    } else if (DRY_FOLIAGE_BLOCKS.includes(item)) {
+      model.tints = [await getColorMapTint(assets, "dry_foliage", 0.5, 1)]
+    } else if (WATER_BLOCKS.includes(item)) {
+      model.tints = ["#3F76E4"]
+    } else if (item === "birch_leaves") {
+      model.tints = ["#80A755"]
+    } else if (item === "spruce_leaves") {
+      model.tints = ["#619961"]
+    } else if (item === "lily_pad") {
+      model.tints = ["#208030"]
+    } else if (item === "lily_pad") {
+      model.tints = ["#208030"]
+    } else if (item === "melon_stem" || item === "pumpkin_stem") {
+      model.tints = [[
+        "#00FF00",
+        "#20F704",
+        "#40EF08",
+        "#60E70C",
+        "#80DF10",
+        "#A0D714",
+        "#C0CF18",
+        "#E0C71C"
+      ][data.age ?? 7]]
+    } else if (item.includes("attached_melon_stem") || item === "attached_pumpkin_stem") {
+      model.tints = ["#E0C71C"]
+    } else if (item === "redstone_wire") {
+      model.tints = [[
+        "#4B0000",
+        "#6F0000",
+        "#790000",
+        "#820000",
+        "#8C0000",
+        "#970000",
+        "#A10000",
+        "#AB0000",
+        "#B50000",
+        "#BF0000",
+        "#CA0000",
+        "#D30000",
+        "#DD0000",
+        "#E70600",
+        "#F11B00",
+        "#FC3100"
+      ][data.power ?? 0]]
+    }
   }
 
   return models
