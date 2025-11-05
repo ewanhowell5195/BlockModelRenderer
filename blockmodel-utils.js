@@ -335,6 +335,13 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
         "#FC3100"
       ][data.power ?? 0]]
     }
+
+    if (item === "end_portal" || item == "end_gateway") {
+      model.shader = {
+        type: "end_portal",
+        layers: item === "end_portal" ? 15 : 16
+      }
+    }
   }
 
   return models
@@ -724,6 +731,17 @@ async function resolveSpecialModel(assets, data) {
   }
 }
 
+async function makeThreeTexture(img) {
+  const texture = await loadTexture(img)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.magFilter = THREE.NearestFilter
+  texture.minFilter = THREE.NearestFilter
+  texture.wrapS = THREE.RepeatWrapping
+  texture.wrapT = THREE.RepeatWrapping
+  texture.needsUpdate = true
+  return texture
+}
+
 export async function loadModel(scene, assets, model, display = "gui") {
   const textureCache = new Map()
 
@@ -732,7 +750,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
     return `${assets}/assets/${namespace}/textures/${item}.png`
   }
 
-  async function loadTextureAsync(id, tint) {
+  async function loadModelTexture(id, tint) {
     if (textureCache.has(id)) return textureCache.get(id)
 
     let image
@@ -759,11 +777,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
       image = canvas
     }
 
-    const texture = await loadTexture(image)
-    texture.colorSpace = THREE.SRGBColorSpace
-    texture.magFilter = THREE.NearestFilter
-    texture.minFilter = THREE.NearestFilter
-    texture.needsUpdate = true
+    const texture = await makeThreeTexture(image)
 
     textureCache.set(id, texture)
     return texture
@@ -1113,14 +1127,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
         texRef = model.textures?.[texRef.slice(1)]
       }
 
-      const map = await loadTextureAsync(texRef, tint)
-
-      materials.push(new THREE.MeshBasicMaterial({
-        map,
-        vertexColors: true,
-        transparent: true,
-        alphaTest: 0.01
-      }))
+      materials.push(await makeMaterial(await loadModelTexture(texRef, tint), assets, model.shader))
     }
 
     const mesh = new THREE.Mesh(geometry, materials)
@@ -1182,4 +1189,111 @@ export async function loadModel(scene, assets, model, display = "gui") {
     }
   }
   scene.add(rootGroup)
+}
+
+async function makeMaterial(texture, assets, shader) {
+  if (shader?.type === "end_portal") {
+    let skyPath = `${assets}/assets/minecraft/textures/environment/end_sky.png`
+    if (!await fileExists(skyPath)) {
+      skyPath = `${__dirname}/defaults/end_sky.png`
+    }
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        GameTime: {
+          value: 0.727
+        },
+        Sampler0: {
+          value: await makeThreeTexture(await loadImage(skyPath))
+        },
+        Sampler1: {
+          value: texture
+        }
+      },
+      vertexShader: `
+        varying vec4 texProj0;
+
+        vec4 projection_from_position(vec4 position) {
+          vec4 projection = position * 0.5;
+          projection.xy = vec2(projection.x + projection.w, projection.y + projection.w);
+          projection.zw = position.zw;
+          return projection;
+        }
+
+        void main() {
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+
+          texProj0 = projection_from_position(gl_Position);
+        }
+      `,
+      fragmentShader: `
+        varying vec4 texProj0;
+
+        uniform float GameTime;
+        uniform sampler2D Sampler0;
+        uniform sampler2D Sampler1;
+
+        mat2 mat2_rotate_z(float radians) {
+          return mat2(
+            cos(radians), -sin(radians),
+            sin(radians), cos(radians)
+          );
+        }
+
+        vec3 getColor(int i) {
+          if (i == 0) return vec3(0.022087, 0.098399, 0.110818);
+          if (i == 1) return vec3(0.011892, 0.095924, 0.089485);
+          if (i == 2) return vec3(0.027636, 0.101689, 0.100326);
+          if (i == 3) return vec3(0.046564, 0.109883, 0.114838);
+          if (i == 4) return vec3(0.064901, 0.117696, 0.097189);
+          if (i == 5) return vec3(0.063761, 0.086895, 0.123646);
+          if (i == 6) return vec3(0.084817, 0.111994, 0.166380);
+          if (i == 7) return vec3(0.097489, 0.154120, 0.091064);
+          if (i == 8) return vec3(0.106152, 0.131144, 0.195191);
+          if (i == 9) return vec3(0.097721, 0.110188, 0.187229);
+          if (i == 10) return vec3(0.133516, 0.138278, 0.148582);
+          if (i == 11) return vec3(0.070006, 0.243332, 0.235792);
+          if (i == 12) return vec3(0.196766, 0.142899, 0.214696);
+          if (i == 13) return vec3(0.047281, 0.315338, 0.321970);
+          if (i == 14) return vec3(0.204675, 0.390010, 0.302066);
+          return vec3(0.080955, 0.314821, 0.661491);
+        }
+
+        const mat4 SCALE_TRANSLATE = mat4(
+          0.5, 0.0, 0.0, 0.25,
+          0.0, 0.5, 0.0, 0.25,
+          0.0, 0.0, 1.0, 0.0,
+          0.0, 0.0, 0.0, 1.0
+        );
+
+        mat4 end_portal_layer(float layer) {
+          mat4 translate = mat4(
+            0.25, 0.0, 0.0, 17.0 / layer,
+            0.0, 0.25, 0.0, (2.0 + layer / 1.5) * (GameTime * 1.5),
+            0.0, 0.0, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0
+          );
+
+          mat2 rotate = mat2_rotate_z(radians((layer * layer * 4321.0 + layer * 9.0) * 2.0));
+
+          mat2 scale = mat2((4.5 - layer / 4.0) * 2.0);
+
+          return mat4(scale * rotate) * translate * SCALE_TRANSLATE;
+        }
+
+        void main() {
+          vec3 color = texture2DProj(Sampler0, texProj0).rgb * getColor(0);
+          for (int i = 0; i < ${shader.layers ?? 15}; i++) {
+            color += texture2DProj(Sampler1, texProj0 * vec4(1.0, 16.0 / 9.0, 1.0, 1.0) * end_portal_layer(float(i + 1))).rgb * getColor(i);
+          }
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `
+    })
+  }
+  return new THREE.MeshBasicMaterial({
+    map: texture,
+    vertexColors: true,
+    transparent: true,
+    alphaTest: 0.01
+  })
 }
