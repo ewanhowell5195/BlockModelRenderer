@@ -1,0 +1,10 @@
+{
+  "multipart": [
+    {
+      "apply": { "model": "block/enchanting_table" }
+    },
+    {
+      "apply": { "model": "~block/enchanting_table_book" }
+    }
+  ]
+}
