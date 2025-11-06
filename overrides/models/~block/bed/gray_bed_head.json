@@ -1,5 +1,5 @@
 {
-  "parent": "~block/_template_bed",
+  "parent": "~block/bed/_template_bed_head",
   "textures": {
     "bed": "entity/bed/gray"
   }

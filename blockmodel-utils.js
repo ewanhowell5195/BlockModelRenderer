@@ -126,6 +126,10 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
   },
   "*cauldron": {
     level: 3
+  },
+  "*bed": {
+    part: "foot",
+    facing: "south"
   }
 }
 
