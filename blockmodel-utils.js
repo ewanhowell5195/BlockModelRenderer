@@ -72,7 +72,8 @@ const DEFAULT_BLOCKSTATES = {
   side_chain: "unconnected",
   powered: false,
   segment_amount: 4,
-  flower_amount: 4
+  flower_amount: 4,
+  rotation: 8
 }
 
 const UNIQUE_DEFAULT_BLOCKSTATES = {
@@ -281,7 +282,9 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
   }
 
   for (const model of models) {
-    if (model.x && model.x % 90 !== 0 || model.y && model.y % 90 !== 0) {
+    if (json.allow_invalid_rotations) {
+      model.allow_invalid_rotations = true
+    } else if (model.x && model.x % 90 !== 0 || model.y && model.y % 90 !== 0) {
       return ["~missing.json"]
     }
 
@@ -534,7 +537,7 @@ export async function resolveModelData(assets, model) {
   let currentPath
 
   try {
-    if (merged.x && merged.x % 90 !== 0 || merged.y && merged.y % 90 !== 0) {
+    if (!merged.allow_invalid_rotations && (merged.x && merged.x % 90 !== 0 || merged.y && merged.y % 90 !== 0)) {
       delete merged.x
       delete merged.y
       throw new Error
@@ -562,6 +565,7 @@ export async function resolveModelData(assets, model) {
     }
   } catch {
     stack = [JSON.parse(await fs.promises.readFile(`${__dirname}/overrides/models/~missing.json`, "utf8"))]
+    merged.model = "~missing.json"
   }
 
   if (merged.special) {
