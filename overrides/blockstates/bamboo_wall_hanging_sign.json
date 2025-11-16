@@ -1,7 +1,7 @@
 {
   "variants": {
     "": {
-      "model": "~block/bamboo_wall_hanging_sign"
+      "model": "~block/sign/bamboo_wall_hanging_sign"
     }
   }
 }

@@ -32,6 +32,7 @@ const skip = file => ["air.json", "cave_air.json", "void_air.json", "moving_pist
 async function handleBlock(file) {
   if (skip(file)) return
   const modelId = path.basename(file, ".json")
+  // if (modelId !== "red_bed") return
   const { scene, camera } = makeModelScene()
   const models = await parseBlockstate(assets, modelId, {})
   let override
@@ -64,4 +65,4 @@ async function handleItem(file) {
 }
 
 await processChunk(blockstateFiles, handleBlock)
-await processChunk(itemFiles, handleItem)
+// await processChunk(itemFiles, handleItem)

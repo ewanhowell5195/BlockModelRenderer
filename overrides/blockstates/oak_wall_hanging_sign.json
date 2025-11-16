@@ -1,7 +1,7 @@
 {
   "variants": {
     "": {
-      "model": "~block/oak_wall_hanging_sign"
+      "model": "~block/sign/oak_wall_hanging_sign"
     }
   }
 }

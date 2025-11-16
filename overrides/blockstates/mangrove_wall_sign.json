@@ -1,18 +1,18 @@
 {
   "variants": {
     "facing=north": {
-      "model": "~block/mangrove_wall_sign"
+      "model": "~block/sign/mangrove_wall_sign"
     },
     "facing=east": {
-      "model": "~block/mangrove_wall_sign",
+      "model": "~block/sign/mangrove_wall_sign",
       "y": 90
     },
     "facing=south": {
-      "model": "~block/mangrove_wall_sign",
+      "model": "~block/sign/mangrove_wall_sign",
       "y": 180
     },
     "facing=west": {
-      "model": "~block/mangrove_wall_sign",
+      "model": "~block/sign/mangrove_wall_sign",
       "y": -90
     }
   }

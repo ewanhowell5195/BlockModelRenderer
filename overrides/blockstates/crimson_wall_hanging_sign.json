@@ -1,7 +1,7 @@
 {
   "variants": {
     "": {
-      "model": "~block/crimson_wall_hanging_sign"
+      "model": "~block/sign/crimson_wall_hanging_sign"
     }
   }
 }

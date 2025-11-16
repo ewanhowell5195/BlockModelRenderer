@@ -1,7 +1,7 @@
 {
   "variants": {
     "": {
-      "model": "~block/warped_wall_hanging_sign"
+      "model": "~block/sign/warped_wall_hanging_sign"
     }
   }
 }

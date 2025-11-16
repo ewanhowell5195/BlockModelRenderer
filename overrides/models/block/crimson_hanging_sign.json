@@ -1,5 +1,5 @@
 {
-  "parent": "~block/_template_hanging_sign",
+  "parent": "~block/sign/_template_hanging_sign",
   "textures": {
     "sign": "entity/signs/hanging/crimson"
   }
