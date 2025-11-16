@@ -1146,16 +1146,18 @@ export async function loadModel(scene, assets, model, display = "gui") {
     )
 
     if (element.rotation) {
-      const { origin, axis, angle } = element.rotation
+      let { origin, axis, angle, x, y, z } = element.rotation
+      if (!isNaN(angle) || axis) {
+        if (isNaN(angle) || !axis) {
+          await loadModel(scene, assets, await resolveModelData(assets, "~missing"), display)
+          return
+        }
+      }
+
       const pivot = new THREE.Vector3(
         8 - origin[0],
         origin[1] - 8,
         origin[2] - 8
-      )
-      const axisVec = new THREE.Vector3(
-        axis === "x" ? 1 : 0,
-        axis === "y" ? 1 : 0,
-        axis === "z" ? 1 : 0
       )
 
       const rotGroup = new THREE.Group()
@@ -1164,7 +1166,19 @@ export async function loadModel(scene, assets, model, display = "gui") {
       mesh.position.sub(pivot)
       rotGroup.add(mesh)
 
-      rotGroup.rotateOnAxis(axisVec, THREE.MathUtils.degToRad(axis === "x" ? angle : -angle))
+      if (axis) {
+        const axisVec = new THREE.Vector3(
+          axis === "x" ? 1 : 0,
+          axis === "y" ? 1 : 0,
+          axis === "z" ? 1 : 0
+        )
+        rotGroup.rotateOnAxis(axisVec, THREE.MathUtils.degToRad(axis === "x" ? angle : -angle))
+      } else {
+        rotGroup.rotateZ(THREE.MathUtils.degToRad(-(z ?? 0)))
+        rotGroup.rotateY(THREE.MathUtils.degToRad(-(y ?? 0)))
+        rotGroup.rotateX(THREE.MathUtils.degToRad(x ?? 0))
+      }
+
       containerGroup.add(rotGroup)
     } else {
       containerGroup.add(mesh)
@@ -1196,6 +1210,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
       )
     }
   }
+
   scene.add(rootGroup)
 }
 
