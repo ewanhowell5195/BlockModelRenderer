@@ -300,44 +300,53 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
       model.tints = [await getColorMapTint(assets, "dry_foliage", 0.5, 1)]
     } else if (WATER_BLOCKS.includes(item)) {
       model.tints = ["#3F76E4"]
-    } else if (item === "birch_leaves") {
-      model.tints = ["#80A755"]
-    } else if (item === "spruce_leaves") {
-      model.tints = ["#619961"]
-    } else if (item === "lily_pad") {
-      model.tints = ["#208030"]
-    } else if (item === "melon_stem" || item === "pumpkin_stem") {
-      model.tints = [[
-        "#00FF00",
-        "#20F704",
-        "#40EF08",
-        "#60E70C",
-        "#80DF10",
-        "#A0D714",
-        "#C0CF18",
-        "#E0C71C"
-      ][data.age ?? 7]]
-    } else if (item.includes("attached_melon_stem") || item === "attached_pumpkin_stem") {
-      model.tints = ["#E0C71C"]
-    } else if (item === "redstone_wire") {
-      model.tints = [[
-        "#4B0000",
-        "#6F0000",
-        "#790000",
-        "#820000",
-        "#8C0000",
-        "#970000",
-        "#A10000",
-        "#AB0000",
-        "#B50000",
-        "#BF0000",
-        "#CA0000",
-        "#D30000",
-        "#DD0000",
-        "#E70600",
-        "#F11B00",
-        "#FC3100"
-      ][data.power ?? 0]]
+    } else switch (item) {
+      case "birch_leaves":
+        model.tints = ["#80A755"]
+        break;
+      case "spruce_leaves":
+        model.tints = ["#619961"]
+        break;
+      case "lily_pad":
+        model.tints = ["#208030"]
+        break;
+      case "melon_stem":
+      case "pumpkin_stem":
+        model.tints = [[
+          "#00FF00",
+          "#20F704",
+          "#40EF08",
+          "#60E70C",
+          "#80DF10",
+          "#A0D714",
+          "#C0CF18",
+          "#E0C71C"
+        ][data.age ?? 7]]
+        break;
+      case "attached_melon_stem":
+      case "attached_pumpkin_stem":
+        model.tints = ["#E0C71C"]
+        break;
+      case "redstone_wire":
+        model.tints = [[
+          "#4B0000",
+          "#6F0000",
+          "#790000",
+          "#820000",
+          "#8C0000",
+          "#970000",
+          "#A10000",
+          "#AB0000",
+          "#B50000",
+          "#BF0000",
+          "#CA0000",
+          "#D30000",
+          "#DD0000",
+          "#E70600",
+          "#F11B00",
+          "#FC3100"
+        ][data.age ?? 7]]
+        break;
     }
 
     if (item === "end_portal" || item == "end_gateway") {
