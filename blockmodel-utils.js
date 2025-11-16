@@ -284,7 +284,7 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
   for (const model of models) {
     if (json.allow_invalid_rotations) {
       model.allow_invalid_rotations = true
-    } else if (model.x && model.x % 90 !== 0 || model.y && model.y % 90 !== 0) {
+    } else if (model.x && model.x % 90 !== 0 || model.y && model.y % 90 !== 0 || model.z && model.z % 90 !== 0) {
       return ["~missing.json"]
     }
 
@@ -537,9 +537,10 @@ export async function resolveModelData(assets, model) {
   let currentPath
 
   try {
-    if (!merged.allow_invalid_rotations && (merged.x && merged.x % 90 !== 0 || merged.y && merged.y % 90 !== 0)) {
+    if (!merged.allow_invalid_rotations && (merged.x && merged.x % 90 !== 0 || merged.y && merged.y % 90 !== 0 || merged.z && merged.z % 90 !== 0)) {
       delete merged.x
       delete merged.y
+      delete merged.z
       throw new Error
     }
     while (true) {
@@ -576,6 +577,7 @@ export async function resolveModelData(assets, model) {
       if (resolved.rotation) {
         merged.x = resolved.rotation[0]
         merged.y += resolved.rotation[1]
+        merged.z += resolved.rotation[2]
       }
       if (resolved.offset) {
         merged.offset = resolved.offset
@@ -821,6 +823,18 @@ export async function loadModel(scene, assets, model, display = "gui") {
     north:  new THREE.Vector3(0, 0, -1)
   }
 
+  const zRot = ((model?.z ?? 0) % 360 + 360) % 360
+  for (let i = 0; i < zRot / 90; i++) {
+    faceNormals = {
+      north: faceNormals.north,
+      south: faceNormals.south,
+      up: faceNormals.east,
+      east: faceNormals.down,
+      down: faceNormals.west,
+      west: faceNormals.up
+    }
+  }
+
   const yRot = ((model?.y ?? 0) % 360 + 360) % 360
   for (let i = 0; i < yRot / 90; i++) {
     faceNormals = {
@@ -933,10 +947,11 @@ export async function loadModel(scene, assets, model, display = "gui") {
   rootGroup.add(displayGroup)
   displayGroup.add(containerGroup)
   
-  if (model.x || model.y) {
+  if (model.x || model.y || model.z) {
     const x = THREE.MathUtils.degToRad(-(model?.x ?? 0))
     const y = THREE.MathUtils.degToRad(model?.y ?? 0)
-    containerGroup.rotation.set(x, y, 0, "YXZ")
+    const z = THREE.MathUtils.degToRad(model?.z ?? 0)
+    containerGroup.rotation.set(x, y, z, "ZYX")
   }
 
   if (model.offset) {
@@ -1018,10 +1033,12 @@ export async function loadModel(scene, assets, model, display = "gui") {
 
       if (model?.uvlock) {
         let newDirection = faceName
+        let x = 0, y = 0
+        let angle
 
         if (model.x) {
-          const x = model.x % 360
-          let angle = 0
+          x = ((model.x % 360) + 360) % 360
+          angle = 0
 
           switch (faceName) {
             case "east":
@@ -1033,12 +1050,13 @@ export async function loadModel(scene, assets, model, display = "gui") {
             case "north":
               if (x === 90) {
                 newDirection = "up"
+                angle = 180
               } else if (x === 180) {
+                angle = 180
                 newDirection = "south"
+              } else if (x === 270) {
                 angle = 180
-              } else {
                 newDirection = "down"
-                angle = 180
               }
               break
             case "south":
@@ -1047,9 +1065,8 @@ export async function loadModel(scene, assets, model, display = "gui") {
               } else if (x === 180) {
                 newDirection = "north"
                 angle = 180
-              } else {
+              } else if (x === 270) {
                 newDirection = "up"
-                angle = 180
               }
               break
             case "up":
@@ -1058,17 +1075,17 @@ export async function loadModel(scene, assets, model, display = "gui") {
                 angle = 180
               } else if (x === 180) {
                 newDirection = "down"
-              } else {
+              } else if (x === 270) {
                 newDirection = "south"
               }
               break
             case "down":
               if (x === 90) {
                 newDirection = "south"
-                angle = 180
               } else if (x === 180) {
                 newDirection = "up"
-              } else {
+              } else if (x === 270) {
+                angle = 180
                 newDirection = "north"
               }
           }
@@ -1083,8 +1100,31 @@ export async function loadModel(scene, assets, model, display = "gui") {
         }
 
         if (model.y) {
+          y = ((model.y % 360) + 360) % 360
+
+          if (y === 90) {
+            if (newDirection === "north") newDirection = "east"
+            else if (newDirection === "east") newDirection = "south"
+            else if (newDirection === "south") newDirection = "west"
+            else if (newDirection === "west") newDirection = "north"
+          } else if (y === 180) {
+            if (newDirection === "north") newDirection = "south"
+            else if (newDirection === "south") newDirection = "north"
+            else if (newDirection === "east") newDirection = "west"
+            else if (newDirection === "west") newDirection = "east"
+          } else if (y === 270) {
+            if (newDirection === "north") newDirection = "west"
+            else if (newDirection === "west") newDirection = "south"
+            else if (newDirection === "south") newDirection = "east"
+            else if (newDirection === "east") newDirection = "north"
+          }
+
           if (newDirection === "up" || newDirection === "down") {
-            const angle = model.y
+            if ((newDirection === "up") ^ !!(x % 180)) {
+              angle = model.y
+            } else {
+              angle = -model.y
+            }
             const center = new THREE.Vector2(8, 8)
             const rad = THREE.MathUtils.degToRad(angle)
             uv = uv.map(([u, v]) => {
@@ -1093,6 +1133,64 @@ export async function loadModel(scene, assets, model, display = "gui") {
               return [vec.x, vec.y]
             })
           }
+        }
+
+        if (model.z) {
+          const z = ((model.z % 360) + 360) % 360
+          angle = 0
+
+          switch (newDirection) {
+            case "north":
+              angle = -model.z
+              break
+            case "south":
+              angle = model.z
+              break
+            case "up":
+              if (z === 90) {
+                angle = 90
+              } else if (z === 180) {
+                angle = 180
+              } else if (z === 270) {
+                angle = -90
+              }
+              break
+            case "down":
+              if (z === 90) {
+                angle = 90
+              } else if (z === 180) {
+                angle = 180
+              } else if (z === 270) {
+                angle = -90
+              }
+              break
+            case "east":
+              if (z === 90) {
+                angle = 90
+              } else if (z === 180) {
+                angle = 180
+              } else if (z === 270) {
+                angle = -90
+              }
+              break
+            case "west":
+              if (z === 90) {
+                angle = 90
+              } else if (z === 180) {
+                angle = 180
+              } else if (z === 270) {
+                angle = -90
+              }
+              break
+          }
+
+          const center = new THREE.Vector2(8, 8)
+          const rad = THREE.MathUtils.degToRad(angle)
+          uv = uv.map(([u, v]) => {
+            const vec = new THREE.Vector2(u, v)
+            vec.rotateAround(center, rad)
+            return [vec.x, vec.y]
+          })
         }
       }
 
