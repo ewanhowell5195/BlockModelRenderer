@@ -55,7 +55,6 @@ function resolveNamespace(str) {
 const DEFAULT_BLOCKSTATES = {
   facing: "north",
   half: "bottom",
-  shape: "straight",
   attachment: "floor",
   up: true,
   shape: ["straight", "north_south"],
@@ -128,7 +127,7 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
   "*cauldron": {
     level: 3
   },
-  "*bed": {
+  "*_bed": {
     part: "foot",
     facing: "south"
   }
