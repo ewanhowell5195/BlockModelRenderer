@@ -307,8 +307,6 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
       model.tints = ["#619961"]
     } else if (item === "lily_pad") {
       model.tints = ["#208030"]
-    } else if (item === "lily_pad") {
-      model.tints = ["#208030"]
     } else if (item === "melon_stem" || item === "pumpkin_stem") {
       model.tints = [[
         "#00FF00",
