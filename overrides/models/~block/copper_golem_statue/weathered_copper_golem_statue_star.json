@@ -1,5 +1,5 @@
 {
-  "parent": "~block/copper_golem_statue/_template_copper_golem_statue",
+  "parent": "~block/copper_golem_statue/_template_copper_golem_statue_star",
   "textures": {
     "golem": "entity/copper_golem/weathered_copper_golem"
   }
