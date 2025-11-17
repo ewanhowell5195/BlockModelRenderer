@@ -90,7 +90,7 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
   "*_stairs|*_glazed_terracotta|cocoa": {
     facing: "south"
   },
-  "*_amethyst_bud|amethyst_cluster|barrel|end_rod|*lightning_rod|*piston*": {
+  "*_amethyst_bud|amethyst_cluster|barrel|end_rod|*lightning_rod|*piston*|*shulker_box": {
     facing: "up"
   },
   "*campfire": {
