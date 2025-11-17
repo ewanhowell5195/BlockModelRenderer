@@ -32,9 +32,9 @@ const skip = file => ["air.json", "cave_air.json", "void_air.json", "moving_pist
 async function handleBlock(file) {
   if (skip(file)) return
   const modelId = path.basename(file, ".json")
-  if (modelId !== "acacia_hanging_sign") return
+  if (modelId !== "acacia_wall_hanging_sign") return
   const { scene, camera } = makeModelScene()
-  const models = await parseBlockstate(assets, modelId, { })
+  const models = await parseBlockstate(assets, modelId, {})
   let override
   for (const model of models) {
     const resolved = await resolveModelData(assets, model)
