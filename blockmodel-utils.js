@@ -345,7 +345,7 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
           "#E70600",
           "#F11B00",
           "#FC3100"
-        ][data.age ?? 7]]
+        ][data.power ?? 0]]
         break;
     }
 
