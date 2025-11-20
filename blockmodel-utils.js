@@ -583,7 +583,7 @@ export async function resolveModelData(assets, model) {
       if (resolved.rotation) {
         merged.x = resolved.rotation[0]
         merged.y += resolved.rotation[1]
-        merged.z += resolved.rotation[2]
+        merged.z = resolved.rotation[2]
       }
       if (resolved.offset) {
         merged.offset = resolved.offset
@@ -724,7 +724,7 @@ async function resolveSpecialModel(assets, data) {
     model.textures = {
       bed: `entity/bed/${normalize(data.texture)}`
     }
-    rotation = [0, 180]
+    rotation = [0, 180, 0]
   } else if (data.type === "chest") {
     model.textures = {
       chest: `entity/chest/${normalize(data.texture)}`
@@ -738,7 +738,7 @@ async function resolveSpecialModel(assets, data) {
       golem: `${normalize(data.texture).slice(9).slice(0, -4)}`
     }
     offset = [0, -3.8]
-    rotation = [180, 180]
+    rotation = [180, 180, 0]
   }
   return {
     model,
