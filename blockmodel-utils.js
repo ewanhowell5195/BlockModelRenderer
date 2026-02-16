@@ -93,7 +93,7 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
   "*_amethyst_bud|amethyst_cluster|barrel|end_rod|*lightning_rod|*piston*|*shulker_box": {
     facing: "up"
   },
-  "*campfire": {
+  "*campfire|redstone_torch|redstone_wall_torch": {
     lit: true
   },
   "glow_lichen|sculk_vein|resin_clump": {
