@@ -130,6 +130,14 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
   "*_bed": {
     part: "foot",
     facing: "south"
+  },
+  chiseled_bookshelf: {
+    slot_0_occupied: false,
+    slot_1_occupied: false,
+    slot_2_occupied: false,
+    slot_3_occupied: false,
+    slot_4_occupied: false,
+    slot_5_occupied: false
   }
 }
 
