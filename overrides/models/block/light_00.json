@@ -1,17 +1,6 @@
 {
+  "parent": "~block/_template_particle",
   "textures": {
-    "light": "item/light_15"
-  },
-  "elements": [
-    {
-      "from": [0, 0, 8],
-      "to": [16, 16, 8],
-      "faces": {
-        "north": {"texture": "#light"},
-        "south": {"texture": "#light"}
-      }
-    }
-  ],
-  "gui_light": "front",
-  "ignore_rotations": true
+    "particle": "item/light_15"
+  }
 }
