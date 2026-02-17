@@ -1,7 +1,7 @@
 import { makeModelScene, renderModelScene, parseBlockstate, parseItemDefinition, resolveModelData, loadModel } from "./blockmodel-utils.js"
 import fs from "node:fs"
 
-const assets = "C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/26.1-shapshot-7"
+const assets = "C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/26.1-shapshot-8"
 const model = "player_head"
 const type = "block"
 const display = {
