@@ -2,7 +2,7 @@ import { makeModelScene, renderModelScene, parseBlockstate, parseItemDefinition,
 import fs from "node:fs"
 import path from "node:path"
 
-const assets = "C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/1.21.10"
+const assets = "C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/26.1-shapshot-7"
 const outputDir = "renders/all"
 const blockDisplay = {
   rotation: [30, 225, 0],

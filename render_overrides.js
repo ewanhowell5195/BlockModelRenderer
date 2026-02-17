@@ -2,7 +2,7 @@ import { makeModelScene, renderModelScene, parseBlockstate, parseItemDefinition,
 import fs from "node:fs"
 import path from "node:path"
 
-const assets = "C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/1.21.10"
+const assets = "C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/26.1-shapshot-7"
 const outputDir = "renders/overrides"
 const blockDisplay = {
   rotation: [30, 225, 0],
@@ -32,7 +32,6 @@ const skip = file => ["air.json", "cave_air.json", "void_air.json", "moving_pist
 async function handleBlock(file) {
   if (skip(file)) return
   const modelId = path.basename(file, ".json")
-  if (modelId !== "acacia_wall_hanging_sign") return
   const { scene, camera } = makeModelScene()
   const models = await parseBlockstate(assets, modelId, {})
   let override
@@ -65,4 +64,4 @@ async function handleItem(file) {
 }
 
 await processChunk(blockstateFiles, handleBlock)
-// await processChunk(itemFiles, handleItem)
+await processChunk(itemFiles, handleItem)
