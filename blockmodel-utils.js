@@ -623,13 +623,28 @@ export async function resolveModelData(assets, model) {
     }
   }
 
+  function handleNestedTexture(key) {
+    if (typeof merged.textures[key] !== "string") {
+      merged.textures[key] = merged.textures[key].sprite
+      if (!merged.textures[key] || merged.textures[key].startsWith("#")) {
+        delete merged.textures[key]
+      }
+    }
+  }
+
   for (const key in merged.textures) {
+    handleNestedTexture(key)
     let value = merged.textures[key]
     while (value?.startsWith("#")) {
       const ref = value.slice(1)
+      handleNestedTexture(ref)
       value = merged.textures[ref]
     }
     merged.textures[key] = value
+
+    if (!merged.textures[key]) {
+      delete merged.textures[key]
+    }
   }
 
   if (normalize(stack[stack.length - 1].parent) === "builtin/generated" && !merged.elements) {

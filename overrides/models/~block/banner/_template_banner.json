@@ -1,7 +1,7 @@
 {
   "texture_size": [64, 64],
   "textures": {
-    "banner": "entity/banner_base",
+    "banner": "entity/banner/banner_base",
     "tinted": "entity/banner/base"
   },
   "elements": [

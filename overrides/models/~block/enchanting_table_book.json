@@ -1,7 +1,7 @@
 {
   "texture_size": [64, 32],
   "textures": {
-    "book": "entity/enchanting_table_book"
+    "book": "entity/enchantment/enchanting_table_book"
   },
   "elements": [
     {

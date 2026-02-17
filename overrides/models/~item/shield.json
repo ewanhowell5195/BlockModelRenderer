@@ -3,7 +3,7 @@
   "credit": "By Ewan Howell",
   "texture_size": [64, 64],
   "textures": {
-    "0": "entity/shield_base_nopattern"
+    "0": "entity/shield/shield_base_nopattern"
   },
   "elements": [
     {
