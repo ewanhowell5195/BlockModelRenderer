@@ -3,7 +3,6 @@
     {
       "from": [0, 0, 8],
       "to": [16, 16, 8],
-      "rotation": {"angle": 0, "axis": "x", "origin": [8, 8, 8]},
       "faces": {
         "north": {"uv": [0, 0, 16, 16], "texture": "#particle", "shade": false},
         "south": {"uv": [0, 0, 16, 16], "texture": "#particle", "shade": false}
