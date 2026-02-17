@@ -3,9 +3,10 @@
     {
       "from": [0, 0, 8],
       "to": [16, 16, 8],
+      "shade": false,
       "faces": {
-        "north": {"uv": [0, 0, 16, 16], "texture": "#particle", "shade": false},
-        "south": {"uv": [0, 0, 16, 16], "texture": "#particle", "shade": false}
+        "north": {"uv": [0, 0, 16, 16], "texture": "#particle"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#particle"}
       }
     }
   ],
