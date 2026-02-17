@@ -638,6 +638,10 @@ export async function resolveModelData(assets, model) {
     while (value?.startsWith("#")) {
       const ref = value.slice(1)
       handleNestedTexture(ref)
+      if (value === merged.textures[key]) {
+        delete merged.textures[key]
+        break
+      }
       value = merged.textures[ref]
     }
     merged.textures[key] = value
