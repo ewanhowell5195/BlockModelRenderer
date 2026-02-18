@@ -1,8 +1,10 @@
-import { makeModelScene, renderModelScene, parseBlockstate, parseItemDefinition, resolveModelData, loadModel } from "./blockmodel-utils.js"
+import { readDirectory, makeModelScene, renderModelScene, parseBlockstate, parseItemDefinition, resolveModelData, loadModel } from "./blockmodel-utils.js"
 import fs from "node:fs"
 import path from "node:path"
 
-const assets = "C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/26.1-shapshot-8"
+const assets = [
+  "C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/26.1-shapshot-8"
+]
 const outputDir = "renders/overrides"
 const blockDisplay = {
   rotation: [30, 225, 0],
@@ -14,11 +16,8 @@ const chunkSize = 32
 fs.mkdirSync(path.join(outputDir, "blocks"), { recursive: true })
 fs.mkdirSync(path.join(outputDir, "items"), { recursive: true })
 
-const blockstatesPath = `${assets}/assets/minecraft/blockstates`
-const itemsPath = `${assets}/assets/minecraft/items`
-
-const blockstateFiles = fs.readdirSync(blockstatesPath).filter(f => f.endsWith(".json"))
-const itemFiles = fs.readdirSync(itemsPath).filter(f => f.endsWith(".json"))
+const blockstateFiles = await readDirectory("assets/minecraft/blockstates", assets).then(arr => arr.filter(f => f.endsWith(".json")))
+const itemFiles = await readDirectory("assets/minecraft/items", assets).then(arr => arr.filter(f => f.endsWith(".json")))
 
 async function processChunk(files, handler) {
   for (let i = 0; i < files.length; i += chunkSize) {
@@ -27,7 +26,7 @@ async function processChunk(files, handler) {
   }
 }
 
-const skip = file => ["air.json", "cave_air.json", "void_air.json", "moving_piston.json"].includes(file)
+const skip = file => ["air.json", "cave_air.json", "void_air.json"].includes(file)
 
 async function handleBlock(file) {
   if (skip(file)) return

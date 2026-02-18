@@ -10,7 +10,100 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const { THREE, loadTexture } = (await getTHREE({ Canvas, Image, ImageData, fetch, Request, Response, Headers }))
 
-const missing = await loadImage(`${__dirname}/defaults/missing.png`)
+const missing = await loadImage(`${__dirname}/assets/fallbacks/assets/minecraft/textures/~missing.png`)
+
+export async function fileExists(filePath, assets) {
+  if (assets) {
+    if (Array.isArray(assets)) {
+      for (const folder of assets) {
+        try {
+          const joined = path.join(folder, filePath)
+          await fs.promises.access(joined)
+          return joined
+        } catch {}
+      }
+      return false
+    } else {
+      filePath = path.join(assets, filePath)
+    }
+  }
+
+  try {
+    await fs.promises.access(filePath)
+    return filePath
+  } catch {
+    return false
+  }
+}
+
+export async function readDirectory(dir, assets) {
+  const out = new Set()
+
+  async function readDir(full) {
+    try {
+      const files = await fs.promises.readdir(full)
+      for (const file of files) out.add(file)
+    } catch {}
+  }
+
+  if (!assets) {
+    await readDir(dir)
+  } else if (Array.isArray(assets)) {
+    for (const folder of assets) {
+      await readDir(path.join(folder, dir))
+    }
+  } else {
+    await readDir(path.join(assets, dir))
+  }
+
+  return Array.from(out)
+}
+
+async function readFile(file, assets) {
+  if (assets) {
+    if (Array.isArray(assets)) {
+      for (const folder of assets) {
+        const full = path.join(folder, file)
+        try {
+          await fs.promises.access(full)
+          const buf = await fs.promises.readFile(full)
+          buf.path = full
+          return buf
+        } catch {}
+      }
+      return
+    }
+    file = path.join(assets, file)
+  }
+  try {
+    await fs.promises.access(file)
+    const buf = await fs.promises.readFile(file)
+    buf.path = file
+    return buf
+  } catch {
+    return
+  }
+}
+
+function getAssets(assets) {
+  let arr
+  if (Array.isArray(assets)) {
+    arr = assets.slice()
+  } else {
+    arr = [assets]
+  }
+  const overridesPath = path.join(__dirname, "assets/overrides")
+  const fallbacksPath = path.join(__dirname, "assets/fallbacks")
+  const resolvedOverrides = path.resolve(overridesPath)
+  const resolvedFallbacks = path.resolve(fallbacksPath)
+  if (!arr.some(p => path.resolve(p) === resolvedOverrides)) {
+    arr.unshift(overridesPath)
+  }
+  if (!arr.some(p => path.resolve(p) === resolvedFallbacks)) {
+    arr.push(fallbacksPath)
+  }
+  return arr
+}
 
 export function makeModelScene() {
   const scene = new THREE.Scene()
@@ -122,7 +215,8 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
     north: "side",
     south: "side",
     east: "side",
-    west: "side"
+    west: "side",
+    power: 0
   },
   "*cauldron": {
     level: 3
@@ -187,11 +281,10 @@ const WATER_BLOCKS = [
 ]
 
 export async function parseBlockstate(assets, blockstate, data = {}) {
+  assets = getAssets(assets)
+
   const { namespace, item } = resolveNamespace(blockstate)
-  const overridePath = `${__dirname}/overrides/blockstates/${item}.json`
-  const assetPath = `${assets}/assets/${namespace}/blockstates/${item}.json`
-  const path = await fileExists(overridePath) ? overridePath : assetPath
-  const json = JSON.parse(await fs.promises.readFile(path, "utf8"))
+  const json = JSON.parse(await readFile(`assets/${namespace}/blockstates/${item}.json`, assets) ?? "{}")
 
   const models = []
 
@@ -375,10 +468,9 @@ function normalize(val) {
 async function getColorMapTint(assets, mapName, temperature, downfall) {
   if (isNaN(temperature) || isNaN(downfall)) return "#FF00FF"
 
-  let filePath = `${assets}/assets/minecraft/textures/colormap/${mapName}.png`
-  if (!await fileExists(filePath)) {
-    filePath = `${__dirname}/defaults/colormap/${mapName}.png`
-  }
+  const filePath = await fileExists(`assets/minecraft/textures/colormap/${mapName}.png`, assets)
+  if (!filePath) return "#FFFFFF"
+
   const image = await loadImage(filePath)
   const canvas = new Canvas(256, 256)
   const ctx = canvas.getContext("2d")
@@ -397,10 +489,12 @@ async function getColorMapTint(assets, mapName, temperature, downfall) {
 }
 
 export async function parseItemDefinition(assets, itemId, data = {}, display = "gui") {
+  assets = getAssets(assets)
+
   const { namespace, item } = resolveNamespace(itemId)
-  const filePath = `${assets}/assets/${namespace}/items/${item}.json`
-  const json = JSON.parse(await fs.promises.readFile(filePath, "utf8"))
-  const models = await resolveItemModel(json.model, assets, data, display)
+  const json = JSON.parse(await readFile(`assets/${namespace}/items/${item}.json`, assets) ?? "{}")
+
+  const models = await resolveItemModel(json.model, data, display)
   for (let i = 0; i < models.length; i++) {
     const model = models[i]
     if (model.tints) {
@@ -423,7 +517,7 @@ export async function parseItemDefinition(assets, itemId, data = {}, display = "
   return models
 }
 
-function resolveItemModel(def, assets, data, display) {
+function resolveItemModel(def, data, display) {
   while (def) {
     const type = normalize(def.type)
 
@@ -439,7 +533,7 @@ function resolveItemModel(def, assets, data, display) {
     if (type === "composite") {
       const result = []
       for (const model of def.models) {
-        const nested = resolveItemModel(model, assets, data, display)
+        const nested = resolveItemModel(model, data, display)
         result.push(...nested)
       }
       return result
@@ -490,24 +584,15 @@ function resolveItemModel(def, assets, data, display) {
   return []
 }
 
-async function fileExists(path) {
-  try {
-    await fs.promises.access(path)
-    return true
-  } catch {
-    return false
-  }
-}
+async function loadMinecraftTexture(path, assets) {
+  const resolved = await fileExists(path, assets)
+  if (!resolved) return missing
 
-async function loadMinecraftTexture(path) {
-  const image = await loadImage(path)
-
-  const metaPath = path + ".mcmeta"
-  if (!(await fileExists(metaPath))) return image
+  const image = await loadImage(resolved)
 
   let meta
   try {
-    meta = JSON.parse(await fs.promises.readFile(metaPath, "utf8"))?.animation ?? {}
+    meta = JSON.parse(await readFile(resolved + ".mcmeta")).animation ?? {}
   } catch {
     return image
   }
@@ -535,6 +620,8 @@ async function loadMinecraftTexture(path) {
 }
 
 export async function resolveModelData(assets, model) {
+  assets = getAssets(assets)
+
   let merged = {}
 
   let type
@@ -558,17 +645,18 @@ export async function resolveModelData(assets, model) {
       throw new Error
     }
     while (true) {
-      const overridePath = `${__dirname}/overrides/models/${currentItem}.json`
-      const hasOverride = await fileExists(overridePath)
+      currentPath = `assets/${currentNamespace}/models/${currentItem}.json`
 
-      if (hasOverride) {
-        currentPath = overridePath
+      const buf = await readFile(currentPath, assets)
+
+      const overridesPath = path.normalize(path.join(__dirname, "assets/overrides")) + path.sep
+      const filePath = path.normalize(buf.path)
+
+      if (filePath.startsWith(overridesPath)) {
         merged.overridden = true
-      } else {
-        currentPath = `${assets}/assets/${currentNamespace}/models/${currentItem}.json`
       }
 
-      const json = JSON.parse(await fs.promises.readFile(currentPath, "utf8"))
+      const json = JSON.parse(buf)
       stack.push(json)
 
       if (!json.parent || json.parent.startsWith("builtin")) break
@@ -579,7 +667,7 @@ export async function resolveModelData(assets, model) {
       currentItem = resolved.item
     }
   } catch {
-    stack = [JSON.parse(await fs.promises.readFile(`${__dirname}/overrides/models/~missing.json`, "utf8"))]
+    stack = [JSON.parse(await readFile("assets/minecraft/models/~missing.json", assets))]
     merged.model = "~missing.json"
   }
 
@@ -659,8 +747,7 @@ export async function resolveModelData(assets, model) {
         const tintIndex = Number(match[1])
         const texId = "#" + key
         const { namespace, item } = resolveNamespace(texRef)
-        const texPath = `${assets}/assets/${namespace}/textures/${item}.png`
-        const image = await loadMinecraftTexture(texPath)
+        const image = await loadMinecraftTexture(`assets/${namespace}/textures/${item}.png`, assets)
         const width = image.width
         const height = image.height
         const depth = 16 / Math.max(width, height)
@@ -742,7 +829,7 @@ async function resolveSpecialModel(assets, data) {
   if (data.type === "head") {
     data.type = `${data.kind}_${data.kind.includes("skeleton") ? "skull" : "head"}`
   }
-  if (!await fileExists(`${__dirname}/overrides/models/~item/${data.type}.json`)) return
+  if (!await fileExists(`assets/minecraft/models/~item/${data.type}.json`, assets)) return
   const model = await resolveModelData(assets, `~item/${data.type}`)
   let offset, rotation
   if (data.type === "banner") {
@@ -786,11 +873,13 @@ async function makeThreeTexture(img) {
 }
 
 export async function loadModel(scene, assets, model, display = "gui") {
+  assets = getAssets(assets)
+
   const textureCache = new Map()
 
   function resolveTexturePath(id) {
     const { namespace, item } = resolveNamespace(id)
-    return `${assets}/assets/${namespace}/textures/${item}.png`
+    return `assets/${namespace}/textures/${item}.png`
   }
 
   async function loadModelTexture(id, tint) {
@@ -799,11 +888,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
     let image
     if (id) {
       const path = resolveTexturePath(id)
-      if (await fileExists(path)) {
-        image = await loadMinecraftTexture(path)
-      } else {
-        image = missing
-      }
+      image = await loadMinecraftTexture(path, assets)
     } else {
       image = missing
     }
@@ -1347,10 +1432,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
 
 async function makeMaterial(texture, assets, shader) {
   if (shader?.type === "end_portal") {
-    let skyPath = `${assets}/assets/minecraft/textures/environment/end_sky.png`
-    if (!await fileExists(skyPath)) {
-      skyPath = `${__dirname}/defaults/end_sky.png`
-    }
+    const skyPath = await fileExists(`assets/minecraft/textures/environment/end_sky.png`, assets)
     return new THREE.ShaderMaterial({
       uniforms: {
         GameTime: {
