@@ -332,7 +332,7 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
 
       for (const cond of conds) {
         const matches = Object.entries(cond).every(([k, v]) => {
-          const allowed = v.split("|")
+          const allowed = v.toString().split("|")
           const raw = data[k] ?? getUniqueDefault(blockstate)[k] ?? DEFAULT_BLOCKSTATES[k]
           let actuals
           if (Array.isArray(raw)) {
