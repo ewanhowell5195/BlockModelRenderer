@@ -232,6 +232,10 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
     slot_3_occupied: false,
     slot_4_occupied: false,
     slot_5_occupied: false
+  },
+  "*_leaves": {
+    persistent: false,
+    distance: 1
   }
 }
 
