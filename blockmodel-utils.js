@@ -347,7 +347,14 @@ export async function parseBlockstate(assets, blockstate, data = {}) {
   assets = getAssets(assets)
 
   const { namespace, item } = resolveNamespace(blockstate)
-  const json = JSON.parse(await readFile(`assets/${namespace}/blockstates/${item}.json`, assets) ?? "{}")
+
+  const buf = await readFile(`assets/${namespace}/blockstates/${item}.json`, assets)
+
+  if (!buf) {
+    return [{ type: "block", model: "~missing" }]
+  }
+
+  const json = JSON.parse(buf)
 
   const models = []
 
@@ -555,7 +562,14 @@ export async function parseItemDefinition(assets, itemId, data = {}, display = "
   assets = getAssets(assets)
 
   const { namespace, item } = resolveNamespace(itemId)
-  const json = JSON.parse(await readFile(`assets/${namespace}/items/${item}.json`, assets) ?? "{}")
+
+  const buf = await readFile(`assets/${namespace}/items/${item}.json`, assets)
+
+  if (!buf) {
+    return [{ type: "model", model: "~missing" }]
+  }
+  
+  const json = JSON.parse(buf)
 
   const models = await resolveItemModel(json.model, data, display)
   for (let i = 0; i < models.length; i++) {
