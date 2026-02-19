@@ -105,6 +105,65 @@ function getAssets(assets) {
   return arr
 }
 
+export async function renderBlock(args = {}) {
+  args.id ??= ""
+  args.assets ??= []
+  args.blockstates ??= {}
+  args.display ??= {
+    rotation: [30, 225, 0],
+    scale: [0.625, 0.625, 0.625],
+    type: "fallback",
+    display: "gui"
+  }
+
+  const { scene, camera } = makeModelScene()
+
+  const models = await parseBlockstate(args.assets, args.id, args.blockstates)
+
+  for (const model of models) {
+    const resolved = await resolveModelData(args.assets, model)
+    await loadModel(scene, args.assets, resolved, args.display)
+  }
+
+  return renderModelScene(scene, camera)
+}
+
+export async function renderItem(args = {}) {
+  args.id ??= ""
+  args.assets ??= []
+  args.properties ??= {}
+  args.display ??= {}
+
+  const { scene, camera } = makeModelScene()
+
+  const models = await parseItemDefinition(args.assets, args.id, args.properties, args.display)
+
+  for (const model of models) {
+    const resolved = await resolveModelData(args.assets, model)
+    await loadModel(scene, args.assets, resolved, args.display)
+  }
+
+  return renderModelScene(scene, camera)
+}
+
+export async function renderModel(args) {
+  args.model ??= {}
+  args.assets ??= []
+  args.display ??= {
+    rotation: [30, 225, 0],
+    scale: [0.625, 0.625, 0.625],
+    type: "fallback",
+    display: "gui"
+  }
+
+  const { scene, camera } = makeModelScene()
+
+  const resolved = await resolveModelData(args.assets, { model: args.model})
+  await loadModel(scene, args.assets, resolved, args.display)
+
+  return renderModelScene(scene, camera)
+}
+
 export function makeModelScene() {
   const scene = new THREE.Scene()
   const camera = new THREE.OrthographicCamera(-8, 8, 8, -8, 0.01, 100)
@@ -547,7 +606,7 @@ function resolveItemModel(def, data, display) {
       const prop = normalize(def.property)
       let value = normalize(data[prop] ?? "")
       if (!value && prop === "display_context") {
-        value = display
+        value = display.display
       }
       const matched = def.cases.find(c => {
         const when = c.when
@@ -634,11 +693,14 @@ export async function resolveModelData(assets, model) {
     model = model.model
   }
 
-  const { namespace, item } = resolveNamespace(model)
+  let currentNamespace, currentItem
+  if (typeof model === "object") {
+    currentItem = model
+  } else {
+    ({ namespace: currentNamespace, item: currentItem } = resolveNamespace(model))
+  }
 
   let stack = []
-  let currentNamespace = namespace
-  let currentItem = item
   let currentPath
 
   try {
@@ -649,18 +711,22 @@ export async function resolveModelData(assets, model) {
       throw new Error
     }
     while (true) {
-      currentPath = `assets/${currentNamespace}/models/${currentItem}.json`
+      let json
+      if (typeof currentItem === "object") {
+        json = currentItem
+      } else {
+        const buf = await readFile(`assets/${currentNamespace}/models/${currentItem}.json`, assets)
 
-      const buf = await readFile(currentPath, assets)
+        const overridesPath = path.normalize(path.join(__dirname, "assets/overrides")) + path.sep
+        const filePath = path.normalize(buf.path)
 
-      const overridesPath = path.normalize(path.join(__dirname, "assets/overrides")) + path.sep
-      const filePath = path.normalize(buf.path)
+        if (filePath.startsWith(overridesPath)) {
+          merged.overridden = true
+        }
 
-      if (filePath.startsWith(overridesPath)) {
-        merged.overridden = true
+        json = JSON.parse(buf)
       }
 
-      const json = JSON.parse(buf)
       stack.push(json)
 
       if (!json.parent || json.parent.startsWith("builtin")) break
