@@ -620,7 +620,7 @@ function resolveItemModel(def, data, display) {
       const prop = normalize(def.property)
       let value = normalize(data[prop] ?? "")
       if (!value && prop === "display_context") {
-        value = display.display
+        value = typeof display === "string" ? display : display.display
       }
       const matched = def.cases.find(c => {
         const when = c.when
