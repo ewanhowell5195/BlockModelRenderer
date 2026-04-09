@@ -1,7 +1,7 @@
 import { renderBlock, renderItem, renderModel } from "./blockmodel-utils.js"
 import fs from "node:fs"
 
-const assets = "C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/26.1-shapshot-8"
+const assets = "C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/26.1"
 
 
 // Render from blockstate
