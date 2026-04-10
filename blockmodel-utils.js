@@ -12,6 +12,27 @@ const { THREE, loadTexture } = (await getTHREE({ Canvas, Image, ImageData, fetch
 
 const missing = await loadImage(`${__dirname}/assets/fallbacks/assets/minecraft/textures/~missing.png`)
 
+function parseTransformation(t) {
+  if (!t) return null
+  if (Array.isArray(t)) {
+    return new THREE.Matrix4().fromArray(t)
+  }
+  const mat = new THREE.Matrix4()
+  const T = new THREE.Matrix4().makeTranslation(...(t.translation || [0, 0, 0]))
+  const L = new THREE.Matrix4().makeRotationFromQuaternion(new THREE.Quaternion(...(t.left_rotation || [0, 0, 0, 1])))
+  const S = new THREE.Matrix4().makeScale(...(t.scale || [1, 1, 1]))
+  const R = new THREE.Matrix4().makeRotationFromQuaternion(new THREE.Quaternion(...(t.right_rotation || [0, 0, 0, 1])))
+  mat.multiply(T).multiply(L).multiply(S).multiply(R)
+  return mat
+}
+
+function composeTransformations(parent, child) {
+  if (!parent && !child) return null
+  if (!parent) return child
+  if (!child) return parent
+  return new THREE.Matrix4().copy(parent).multiply(child)
+}
+
 export async function fileExists(filePath, assets) {
   if (assets) {
     if (Array.isArray(assets)) {
@@ -594,9 +615,13 @@ export async function parseItemDefinition(assets, itemId, data = {}, display = "
   return models
 }
 
-function resolveItemModel(def, data, display) {
+function resolveItemModel(def, data, display, accTransform) {
+  const normalizedData = {}
+  for (const key in data) normalizedData[normalize(key)] = data[key]
+  data = normalizedData
   while (def) {
     const type = normalize(def.type)
+    const currentTransform = composeTransformations(accTransform, parseTransformation(def.transformation))
 
     if (type === "special") {
       const model = {
@@ -604,13 +629,14 @@ function resolveItemModel(def, data, display) {
       }
       model.special = def.model
       model.special.type = normalize(model.special.type)
+      if (currentTransform) model.transformation = currentTransform
       return [model]
     }
 
     if (type === "composite") {
       const result = []
       for (const model of def.models) {
-        const nested = resolveItemModel(model, data, display)
+        const nested = resolveItemModel(model, data, display, currentTransform)
         result.push(...nested)
       }
       return result
@@ -628,6 +654,7 @@ function resolveItemModel(def, data, display) {
         return normalize(when) === value
       })
       def = matched?.model || def.fallback
+      accTransform = currentTransform
       continue
     }
 
@@ -636,6 +663,7 @@ function resolveItemModel(def, data, display) {
       const value = normalize(data[prop])
       const isTruthy = value === "true"
       def = isTruthy ? def.on_true : def.on_false
+      accTransform = currentTransform
       continue
     }
 
@@ -649,10 +677,12 @@ function resolveItemModel(def, data, display) {
         if (scaled >= entry.threshold) chosen = entry.model
       }
       def = chosen
+      accTransform = currentTransform
       continue
     }
 
     if (type === "model") {
+      if (currentTransform) def = { ...def, transformation: currentTransform }
       return [def]
     }
 
@@ -756,7 +786,7 @@ export async function resolveModelData(assets, model) {
   }
 
   if (merged.special) {
-    const resolved = await resolveSpecialModel(assets, merged.special)
+    const resolved = await resolveSpecialModel(assets, merged.special, merged.model)
     if (resolved) {
       stack.push(resolved.model)
       merged.y = 180
@@ -909,12 +939,20 @@ const COLOURS = {
   yellow: "#fed83d"
 }
 
-async function resolveSpecialModel(assets, data) {
+async function resolveSpecialModel(assets, data, base) {
   if (data.type === "head") {
     data.type = `${data.kind}_${data.kind.includes("skeleton") ? "skull" : "head"}`
   }
-  if (!await fileExists(`assets/minecraft/models/~item/${data.type}.json`, assets)) return
-  const model = await resolveModelData(assets, `~item/${data.type}`)
+  const basePath = base ? "~" + resolveNamespace(base).item : null
+  let modelPath
+  if (basePath && await fileExists(`assets/minecraft/models/${basePath}.json`, assets)) {
+    modelPath = basePath
+  } else if (await fileExists(`assets/minecraft/models/~item/${data.type}.json`, assets)) {
+    modelPath = `~item/${data.type}`
+  } else {
+    return
+  }
+  const model = await resolveModelData(assets, modelPath)
   let offset, rotation
   if (data.type === "banner") {
     model.tints = [COLOURS[data.color]]
@@ -1509,6 +1547,13 @@ export async function loadModel(scene, assets, model, display = "gui") {
         settings.scale[2]
       )
     }
+  }
+
+  if (model.transformation) {
+    const mat = model.transformation instanceof THREE.Matrix4
+      ? model.transformation
+      : parseTransformation(model.transformation)
+    if (mat) rootGroup.applyMatrix4(mat)
   }
 
   scene.add(rootGroup)
