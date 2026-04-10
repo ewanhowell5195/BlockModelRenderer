@@ -1412,7 +1412,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
         }
       }
 
-      geometry.attributes.uv.array.set(uv.flatMap(([u, v]) => [u / 16, v / 16]), i * 8)
+      geometry.attributes.uv.array.set(uv.flatMap(([u, v]) => [u / 16, 1 - v / 16]), i * 8)
 
       let colour
       if (element.shade === false) {
