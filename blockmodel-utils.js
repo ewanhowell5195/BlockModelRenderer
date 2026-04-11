@@ -1,14 +1,12 @@
 import { Canvas, Image, ImageData, loadImage } from "skia-canvas"
 import { fileURLToPath } from "node:url"
 import getTHREE from "headless-three"
-import createContext from "gl"
 import path from "node:path"
-import sharp from "sharp"
 import fs from "node:fs"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-const { THREE, loadTexture } = (await getTHREE({ Canvas, Image, ImageData }))
+const { THREE, loadTexture, render } = (await getTHREE({ Canvas, Image, ImageData }))
 
 const missing = await loadImage(`${__dirname}/assets/fallbacks/assets/minecraft/textures/~missing.png`)
 
@@ -189,32 +187,13 @@ export function makeModelScene() {
   const scene = new THREE.Scene()
   const camera = new THREE.OrthographicCamera(-8, 8, 8, -8, 0.01, 100)
   camera.position.set(0, 0, 30)
-  camera.up = new THREE.Vector3(0, -1, 0)
   camera.lookAt(0, 0, 0)
 
   return { scene, camera }
 }
 
 export async function renderModelScene(scene, camera, outputPath, w = 1024, h = 1024) {
-  const gl = createContext(w, h)
-
-  const renderer = new THREE.WebGLRenderer({
-    context: gl,
-    preserveDrawingBuffer: true
-  })
-
-  renderer.setSize(w, h)
-  renderer.setClearColor(0x000000, 0)
-  renderer.outputColorSpace = THREE.LinearSRGBColorSpace
-
-  renderer.render(scene, camera)
-
-  const buff = Buffer.alloc(w * h * 4)
-  gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buff)
-
-  return sharp(buff, {
-    raw: { width: w, height: h, channels: 4 }
-  }).png().toBuffer()
+  return render({ scene, camera, width: w, height: h, path: outputPath, colorSpace: THREE.LinearSRGBColorSpace })
 }
 
 function resolveNamespace(str) {
@@ -986,7 +965,6 @@ async function resolveSpecialModel(assets, data, base) {
 
 async function makeThreeTexture(img) {
   const texture = await loadTexture(img)
-  texture.flipY = false
   texture.magFilter = THREE.NearestFilter
   texture.minFilter = THREE.NearestFilter
   texture.wrapS = THREE.RepeatWrapping
@@ -1190,7 +1168,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
   
   if (model.x || model.y || model.z) {
     const x = THREE.MathUtils.degToRad(-(model?.x ?? 0))
-    const y = THREE.MathUtils.degToRad(model?.y ?? 0)
+    const y = THREE.MathUtils.degToRad(-(model?.y ?? 0))
     const z = THREE.MathUtils.degToRad(model?.z ?? 0)
     containerGroup.rotation.set(x, y, z, "ZYX")
   }
@@ -1214,7 +1192,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
       geometry.scale(scale.x, scale.y, scale.z)
     }
 
-    const faceOrder = ["west", "east", "up", "down", "south", "north"]
+    const faceOrder = ["east", "west", "up", "down", "south", "north"]
 
     const colorCount = geometry.attributes.position.count
     geometry.setAttribute("color", new THREE.BufferAttribute(new Float32Array(colorCount * 3), 3))
@@ -1261,16 +1239,16 @@ export async function loadModel(scene, assets, model, display = "gui") {
       }
 
       let uv = [
-        [u2, v1],
         [u1, v1],
-        [u2, v2],
-        [u1, v2]
+        [u2, v1],
+        [u1, v2],
+        [u2, v2]
       ]
 
       let rot = face.rotation ?? 0
-      if (rot === 90) uv = [uv[1], uv[3], uv[0], uv[2]]
+      if (rot === 90) uv = [uv[2], uv[0], uv[3], uv[1]]
       else if (rot === 180) uv = [uv[3], uv[2], uv[1], uv[0]]
-      else if (rot === 270) uv = [uv[2], uv[0], uv[3], uv[1]]
+      else if (rot === 270) uv = [uv[1], uv[3], uv[0], uv[2]]
 
       if (model?.uvlock) {
         let newDirection = faceName
@@ -1435,7 +1413,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
         }
       }
 
-      geometry.attributes.uv.array.set(uv.flatMap(([u, v]) => [u / 16, v / 16]), i * 8)
+      geometry.attributes.uv.array.set(uv.flatMap(([u, v]) => [u / 16, 1 - v / 16]), i * 8)
 
       let colour
       if (element.shade === false) {
@@ -1479,7 +1457,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
 
     const mesh = new THREE.Mesh(geometry, materials)
     mesh.position.set(
-      8 - (from.x + size.x / 2),
+      from.x + size.x / 2 - 8,
       from.y + size.y / 2 - 8,
       from.z + size.z / 2 - 8
     )
@@ -1494,7 +1472,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
       }
 
       const pivot = new THREE.Vector3(
-        8 - origin[0],
+        origin[0] - 8,
         origin[1] - 8,
         origin[2] - 8
       )
@@ -1511,7 +1489,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
           axis === "y" ? 1 : 0,
           axis === "z" ? 1 : 0
         )
-        rotGroup.rotateOnAxis(axisVec, THREE.MathUtils.degToRad(axis === "x" ? angle : -angle))
+        rotGroup.rotateOnAxis(axisVec, THREE.MathUtils.degToRad(angle))
       } else {
         rotGroup.rotateZ(THREE.MathUtils.degToRad(-(z ?? 0)))
         rotGroup.rotateY(THREE.MathUtils.degToRad(-(y ?? 0)))
@@ -1528,15 +1506,15 @@ export async function loadModel(scene, assets, model, display = "gui") {
     if (settings.rotation) {
       const delta = new THREE.Euler(
         THREE.MathUtils.degToRad(settings.rotation[0]),
-        THREE.MathUtils.degToRad(-settings.rotation[1]),
-        THREE.MathUtils.degToRad(-settings.rotation[2]),
+        THREE.MathUtils.degToRad(settings.rotation[1]),
+        THREE.MathUtils.degToRad(settings.rotation[2]),
         displayGroup.rotation.order
       )
       displayGroup.quaternion.multiply(new THREE.Quaternion().setFromEuler(delta))
     }
     if (settings.translation) {
       displayGroup.position.set(
-        -settings.translation[0],
+        settings.translation[0],
         settings.translation[1],
         settings.translation[2]
       )
