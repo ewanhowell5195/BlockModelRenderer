@@ -1251,66 +1251,13 @@ export async function loadModel(scene, assets, model, display = "gui") {
       else if (rot === 270) uv = [uv[1], uv[3], uv[0], uv[2]]
 
       if (model?.uvlock) {
-        let newDirection = faceName
-        let x = 0, y = 0
-        let angle
+        let dir = faceName
+        let x = ((model.x ?? 0) % 360 + 360) % 360
 
-        if (model.x) {
-          x = ((model.x % 360) + 360) % 360
-          angle = 0
-
-          switch (faceName) {
-            case "east":
-              angle = model.x
-              break
-            case "west":
-              angle = -model.x
-              break
-            case "north":
-              if (x === 90) {
-                newDirection = "up"
-                angle = 180
-              } else if (x === 180) {
-                angle = 180
-                newDirection = "south"
-              } else if (x === 270) {
-                angle = 180
-                newDirection = "down"
-              }
-              break
-            case "south":
-              if (x === 90) {
-                newDirection = "down"
-              } else if (x === 180) {
-                newDirection = "north"
-                angle = 180
-              } else if (x === 270) {
-                newDirection = "up"
-              }
-              break
-            case "up":
-              if (x === 90) {
-                newDirection = "north"
-                angle = 180
-              } else if (x === 180) {
-                newDirection = "down"
-              } else if (x === 270) {
-                newDirection = "south"
-              }
-              break
-            case "down":
-              if (x === 90) {
-                newDirection = "south"
-              } else if (x === 180) {
-                newDirection = "up"
-              } else if (x === 270) {
-                angle = 180
-                newDirection = "north"
-              }
-          }
-
-          const center = new THREE.Vector2(8, 8)
+        const rotateUV = angle => {
+          if (!angle) return
           const rad = THREE.MathUtils.degToRad(angle)
+          const center = new THREE.Vector2(8, 8)
           uv = uv.map(([u, v]) => {
             const vec = new THREE.Vector2(u, v)
             vec.rotateAround(center, rad)
@@ -1318,98 +1265,33 @@ export async function loadModel(scene, assets, model, display = "gui") {
           })
         }
 
-        if (model.y) {
-          y = ((model.y % 360) + 360) % 360
-
-          if (y === 90) {
-            if (newDirection === "north") newDirection = "east"
-            else if (newDirection === "east") newDirection = "south"
-            else if (newDirection === "south") newDirection = "west"
-            else if (newDirection === "west") newDirection = "north"
-          } else if (y === 180) {
-            if (newDirection === "north") newDirection = "south"
-            else if (newDirection === "south") newDirection = "north"
-            else if (newDirection === "east") newDirection = "west"
-            else if (newDirection === "west") newDirection = "east"
-          } else if (y === 270) {
-            if (newDirection === "north") newDirection = "west"
-            else if (newDirection === "west") newDirection = "south"
-            else if (newDirection === "south") newDirection = "east"
-            else if (newDirection === "east") newDirection = "north"
+        if (x) {
+          const xCycle = { north: "up", up: "south", south: "down", down: "north" }
+          const xAngles = {
+            east:  model.x,
+            west:  -model.x,
+            north: x !== 180 ? 180 : 180,
+            south: x === 180 ? 180 : 0,
+            up:    x === 90 ? 180 : x === 270 ? 0 : 0,
+            down:  x === 270 ? 180 : 0
           }
+          rotateUV(xAngles[faceName])
+          for (let i = 0; i < x / 90; i++) dir = xCycle[dir] ?? dir
+        }
 
-          if (newDirection === "up" || newDirection === "down") {
-            if ((newDirection === "up") ^ !!(x % 180)) {
-              angle = model.y
-            } else {
-              angle = -model.y
-            }
-            const center = new THREE.Vector2(8, 8)
-            const rad = THREE.MathUtils.degToRad(angle)
-            uv = uv.map(([u, v]) => {
-              const vec = new THREE.Vector2(u, v)
-              vec.rotateAround(center, rad)
-              return [vec.x, vec.y]
-            })
+        if (model.y) {
+          const yCycle = { north: "east", east: "south", south: "west", west: "north" }
+          const y = ((model.y % 360) + 360) % 360
+          for (let i = 0; i < y / 90; i++) dir = yCycle[dir] ?? dir
+
+          if (dir === "up" || dir === "down") {
+            rotateUV((dir === "up") ^ !!(x % 180) ? model.y : -model.y)
           }
         }
 
         if (model.z) {
-          const z = ((model.z % 360) + 360) % 360
-          angle = 0
-
-          switch (newDirection) {
-            case "north":
-              angle = -model.z
-              break
-            case "south":
-              angle = model.z
-              break
-            case "up":
-              if (z === 90) {
-                angle = 90
-              } else if (z === 180) {
-                angle = 180
-              } else if (z === 270) {
-                angle = -90
-              }
-              break
-            case "down":
-              if (z === 90) {
-                angle = 90
-              } else if (z === 180) {
-                angle = 180
-              } else if (z === 270) {
-                angle = -90
-              }
-              break
-            case "east":
-              if (z === 90) {
-                angle = 90
-              } else if (z === 180) {
-                angle = 180
-              } else if (z === 270) {
-                angle = -90
-              }
-              break
-            case "west":
-              if (z === 90) {
-                angle = 90
-              } else if (z === 180) {
-                angle = 180
-              } else if (z === 270) {
-                angle = -90
-              }
-              break
-          }
-
-          const center = new THREE.Vector2(8, 8)
-          const rad = THREE.MathUtils.degToRad(angle)
-          uv = uv.map(([u, v]) => {
-            const vec = new THREE.Vector2(u, v)
-            vec.rotateAround(center, rad)
-            return [vec.x, vec.y]
-          })
+          const zAngles = { north: -model.z, south: model.z }
+          rotateUV(zAngles[dir] ?? model.z)
         }
       }
 
