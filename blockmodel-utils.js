@@ -10,6 +10,11 @@ const { THREE, loadTexture, render } = (await getTHREE({ Canvas, Image, ImageDat
 
 const missing = await loadImage(`${__dirname}/assets/fallbacks/assets/minecraft/textures/~missing.png`)
 
+const AXIS_VECTORS = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) }
+const UV_CENTER = new THREE.Vector2(8, 8)
+const X_CYCLE = { north: "up", up: "south", south: "down", down: "north" }
+const Y_CYCLE = { north: "east", east: "south", south: "west", west: "north" }
+
 function parseTransformation(t) {
   if (!t) return null
   if (Array.isArray(t)) {
@@ -1106,58 +1111,24 @@ export async function loadModel(scene, assets, model, display = "gui") {
 
   const upColour = [0.988, 0.988, 0.988]
   const downColour = [0.471, 0.471, 0.471]
-
   const cols = [0.471, 0.494, 0.686, 0.851, 0.988]
+  const isFront = model.gui_light === "front"
+  const lightDir = isFront ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(-1, 0, 0)
 
-  let getFaceColour
-  if (model.gui_light === "front") {
-    getFaceColour = faceName => {
-      const newFace = faceMapping[faceName]
+  const getFaceColour = faceName => {
+    const newFace = faceMapping[faceName]
+    if (newFace === "up") return upColour
+    if (newFace === "down") return downColour
 
-      if (newFace === "up") return upColour
-      if (newFace === "down") return downColour
+    const normal = rotated[faceName]
+    let t = Math.max(0, normal.dot(lightDir))
+    if (isFront && normal.x < 0) t = Math.min(1, (t + 1.2) / 2)
 
-      const normal = rotated[faceName]
-
-      let t = Math.max(0, normal.dot(new THREE.Vector3(0, 0, 1)))
-
-      if (normal.x < 0) {
-        t = Math.min(1, (t + 1.2) / 2)
-      }
-      const linear = Math.asin(t) * 2 / Math.PI
-
-      const scaled = linear * (cols.length - 1)
-      const i = Math.floor(scaled)
-      const f = scaled - i
-
-      const start = cols[i] ?? cols[cols.length - 1]
-      const end = cols[i + 1] ?? cols[cols.length - 1]
-      const v = start + (end - start) * f
-
-      return [v, v, v]
-    }
-  } else {
-    getFaceColour = faceName => {
-      const newFace = faceMapping[faceName]
-      
-      if (newFace === "up") return upColour
-      if (newFace === "down") return downColour
-      
-      const normal = rotated[faceName]
-
-      const t = Math.max(0, normal.dot(new THREE.Vector3(-1, 0, 0)))
-      const linear = Math.asin(t) * 2 / Math.PI
-
-      const scaled = linear * (cols.length - 1)
-      const i = Math.floor(scaled)
-      const f = scaled - i
-
-      const start = cols[i] ?? cols[cols.length - 1]
-      const end = cols[i + 1] ?? cols[cols.length - 1]
-      const v = start + (end - start) * f
-
-      return [v, v, v]
-    }
+    const scaled = Math.asin(t) * 2 / Math.PI * (cols.length - 1)
+    const i = Math.floor(scaled)
+    const f = scaled - i
+    const v = (cols[i] ?? cols[cols.length - 1]) + ((cols[i + 1] ?? cols[cols.length - 1]) - (cols[i] ?? cols[cols.length - 1])) * f
+    return [v, v, v]
   }
 
   const rootGroup = new THREE.Group()
@@ -1205,37 +1176,12 @@ export async function loadModel(scene, assets, model, display = "gui") {
       if (!face.uv) {
         const [fx, fy, fz] = element.from
         const [tx, ty, tz] = element.to
-        if (faceName === "up") {
-          u1 = fx
-          u2 = tx
-          v2 = tz
-          v1 = fz
-        } else if (faceName === "down") {
-          u1 = fx
-          u2 = tx
-          v2 = 16 - fz
-          v1 = 16 - tz
-        } else if (faceName === "north") {
-          u1 = 16 - tx
-          u2 = 16 - fx
-          v1 = 16 - ty
-          v2 = 16 - fy
-        } else if (faceName === "south") {
-          u1 = fx
-          u2 = tx
-          v1 = 16 - ty
-          v2 = 16 - fy
-        } else if (faceName === "east") {
-          u1 = 16 - tz
-          u2 = 16 - fz
-          v1 = 16 - ty
-          v2 = 16 - fy
-        } else if (faceName === "west") {
-          u1 = fz
-          u2 = tz
-          v1 = 16 - ty
-          v2 = 16 - fy
-        }
+        if (faceName === "up") { u1 = fx; u2 = tx; v1 = fz; v2 = tz }
+        else if (faceName === "down") { u1 = fx; u2 = tx; v1 = 16 - tz; v2 = 16 - fz }
+        else if (faceName === "north") { u1 = 16 - tx; u2 = 16 - fx; v1 = 16 - ty; v2 = 16 - fy }
+        else if (faceName === "south") { u1 = fx; u2 = tx; v1 = 16 - ty; v2 = 16 - fy }
+        else if (faceName === "east") { u1 = 16 - tz; u2 = 16 - fz; v1 = 16 - ty; v2 = 16 - fy }
+        else if (faceName === "west") { u1 = fz; u2 = tz; v1 = 16 - ty; v2 = 16 - fy }
       }
 
       let uv = [
@@ -1245,7 +1191,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
         [u2, v2]
       ]
 
-      let rot = face.rotation ?? 0
+      const rot = face.rotation ?? 0
       if (rot === 90) uv = [uv[2], uv[0], uv[3], uv[1]]
       else if (rot === 180) uv = [uv[3], uv[2], uv[1], uv[0]]
       else if (rot === 270) uv = [uv[1], uv[3], uv[0], uv[2]]
@@ -1257,32 +1203,26 @@ export async function loadModel(scene, assets, model, display = "gui") {
         const rotateUV = angle => {
           if (!angle) return
           const rad = THREE.MathUtils.degToRad(angle)
-          const center = new THREE.Vector2(8, 8)
           uv = uv.map(([u, v]) => {
             const vec = new THREE.Vector2(u, v)
-            vec.rotateAround(center, rad)
+            vec.rotateAround(UV_CENTER, rad)
             return [vec.x, vec.y]
           })
         }
 
         if (x) {
-          const xCycle = { north: "up", up: "south", south: "down", down: "north" }
-          const xAngles = {
-            east:  model.x,
-            west:  -model.x,
-            north: x !== 180 ? 180 : 180,
-            south: x === 180 ? 180 : 0,
-            up:    x === 90 ? 180 : x === 270 ? 0 : 0,
-            down:  x === 270 ? 180 : 0
-          }
-          rotateUV(xAngles[faceName])
-          for (let i = 0; i < x / 90; i++) dir = xCycle[dir] ?? dir
+          if (faceName === "east") rotateUV(model.x)
+          else if (faceName === "west") rotateUV(-model.x)
+          else if (faceName === "north") rotateUV(180)
+          else if (faceName === "south") rotateUV(x === 180 ? 180 : 0)
+          else if (faceName === "up") rotateUV(x === 90 ? 180 : 0)
+          else if (faceName === "down") rotateUV(x === 270 ? 180 : 0)
+          for (let i = 0; i < x / 90; i++) dir = X_CYCLE[dir] ?? dir
         }
 
         if (model.y) {
-          const yCycle = { north: "east", east: "south", south: "west", west: "north" }
           const y = ((model.y % 360) + 360) % 360
-          for (let i = 0; i < y / 90; i++) dir = yCycle[dir] ?? dir
+          for (let i = 0; i < y / 90; i++) dir = Y_CYCLE[dir] ?? dir
 
           if (dir === "up" || dir === "down") {
             rotateUV((dir === "up") ^ !!(x % 180) ? model.y : -model.y)
@@ -1290,8 +1230,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
         }
 
         if (model.z) {
-          const zAngles = { north: -model.z, south: model.z }
-          rotateUV(zAngles[dir] ?? model.z)
+          rotateUV(dir === "north" ? -model.z : dir === "south" ? model.z : model.z)
         }
       }
 
@@ -1366,12 +1305,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
       rotGroup.add(mesh)
 
       if (axis) {
-        const axisVec = new THREE.Vector3(
-          axis === "x" ? 1 : 0,
-          axis === "y" ? 1 : 0,
-          axis === "z" ? 1 : 0
-        )
-        rotGroup.rotateOnAxis(axisVec, THREE.MathUtils.degToRad(angle))
+        rotGroup.rotateOnAxis(AXIS_VECTORS[axis], THREE.MathUtils.degToRad(angle))
       } else {
         rotGroup.rotateZ(THREE.MathUtils.degToRad(-(z ?? 0)))
         rotGroup.rotateY(THREE.MathUtils.degToRad(-(y ?? 0)))
