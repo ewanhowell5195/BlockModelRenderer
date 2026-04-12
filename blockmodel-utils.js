@@ -605,6 +605,39 @@ async function resolveItemModel(assets, def, data, display, accTransform) {
       let value = normalize(data[prop] ?? "")
       if (!value && prop === "display_context") {
         value = typeof display === "string" ? display : display.display
+      } else if (!value && prop === "local_time" && def.pattern) {
+        const now = new Date()
+        const pad = n => String(n).padStart(2, "0")
+        value = def.pattern.replace(/yyyy|yy|MMMM|MMM|MM|M|dd|d|EEEE|EEE|EE|E|HH|H|hh|h|mm|m|ss|s|a|Z|z|w|W|D|u|G/g, m => {
+          switch (m) {
+            case "yyyy": return now.getFullYear()
+            case "yy": return String(now.getFullYear()).slice(-2)
+            case "MMMM": return now.toLocaleString("en", { month: "long" })
+            case "MMM": return now.toLocaleString("en", { month: "short" })
+            case "MM": return pad(now.getMonth() + 1)
+            case "M": return now.getMonth() + 1
+            case "dd": return pad(now.getDate())
+            case "d": return now.getDate()
+            case "EEEE": return now.toLocaleString("en", { weekday: "long" })
+            case "EEE": case "EE": case "E": return now.toLocaleString("en", { weekday: "short" })
+            case "HH": return pad(now.getHours())
+            case "H": return now.getHours()
+            case "hh": return pad(now.getHours() % 12 || 12)
+            case "h": return now.getHours() % 12 || 12
+            case "mm": return pad(now.getMinutes())
+            case "m": return now.getMinutes()
+            case "ss": return pad(now.getSeconds())
+            case "s": return now.getSeconds()
+            case "a": return now.getHours() < 12 ? "AM" : "PM"
+            case "Z": case "z": { const o = -now.getTimezoneOffset(); return (o >= 0 ? "+" : "-") + pad(Math.floor(Math.abs(o) / 60)) + pad(Math.abs(o) % 60) }
+            case "w": { const d = new Date(now.getFullYear(), 0, 1); return Math.ceil(((now - d) / 86400000 + d.getDay() + 1) / 7) }
+            case "W": return Math.ceil(now.getDate() / 7)
+            case "D": return Math.ceil((now - new Date(now.getFullYear(), 0, 1)) / 86400000) + 1
+            case "u": return now.getDay() || 7
+            case "G": return "AD"
+            default: return m
+          }
+        })
       }
       const matched = def.cases.find(c => {
         const when = c.when
