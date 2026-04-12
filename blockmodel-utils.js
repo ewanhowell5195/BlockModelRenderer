@@ -1039,6 +1039,10 @@ export async function resolveModelData(assets, model) {
 async function resolveSpecialModel(assets, data, base) {
   if (data.type === "head") {
     data.type = `${data.kind}_${data.kind.includes("skeleton") ? "skull" : "head"}`
+  } else if (data.type === "standing_sign" && data.attachement) {
+    data.type = `standing_sign_${data.attachement}`
+  } else if (data.type === "hanging_sign" && data.attachment) {
+    data.type = `hanging_sign_${data.attachment}`
   }
   const basePath = base ? "~" + resolveNamespace(base).item : null
   let modelPath
@@ -1054,6 +1058,12 @@ async function resolveSpecialModel(assets, data, base) {
   if (data.type === "banner") {
     model.tints = [COLOURS.dye[data.color]]
   } else if (data.type === "book" || data.type === "bell") {
+    rotation = [0, 180, 0]
+  } else if (data.type.startsWith("standing_sign")) {
+    model.textures = { sign: `entity/signs/${normalize(data.wood_type)}` }
+    rotation = [0, 180, 0]
+  } else if (data.type.startsWith("hanging_sign")) {
+    model.textures = { sign: `entity/signs/hanging/${normalize(data.wood_type)}` }
     rotation = [0, 180, 0]
   } else if (data.type === "bed") {
     model.textures = {
