@@ -552,14 +552,15 @@ export async function parseItemDefinition(assets, itemId, data = {}, display = "
 
   const normalizedData = {}
   for (const key in data) normalizedData[normalize(key)] = data[key]
-  const models = resolveItemModel(json.model, normalizedData, display)
+  const models = await resolveItemModel(assets, json.model, normalizedData, display)
   for (let i = 0; i < models.length; i++) {
     const model = models[i]
     if (model.tints) {
       const tints = []
       for (const tint of model.tints) {
-        const type = normalize(tint.type)
-        if (type === "grass") {
+        if (typeof tint === "string") {
+          tints.push(tint)
+        } else if (normalize(tint.type) === "grass") {
           tints.push(await getColorMapTint(assets, "grass", tint.temperature, tint.downfall))
         } else if (tint.value || tint.default) {
           tints.push("#" + ((tint.value ?? tint.default) >>> 0).toString(16).padStart(8, "0").slice(2))
@@ -575,7 +576,7 @@ export async function parseItemDefinition(assets, itemId, data = {}, display = "
   return models
 }
 
-function resolveItemModel(def, data, display, accTransform) {
+async function resolveItemModel(assets, def, data, display, accTransform) {
   while (def) {
     const type = normalize(def.type)
     const currentTransform = composeTransformations(accTransform, parseTransformation(def.transformation))
@@ -593,7 +594,7 @@ function resolveItemModel(def, data, display, accTransform) {
     if (type === "composite") {
       const result = []
       for (const model of def.models) {
-        const nested = resolveItemModel(model, data, display, currentTransform)
+        const nested = await resolveItemModel(assets, model, data, display, currentTransform)
         result.push(...nested)
       }
       return result
@@ -641,6 +642,12 @@ function resolveItemModel(def, data, display, accTransform) {
     if (type === "model") {
       if (currentTransform) def = { ...def, transformation: currentTransform }
       return [def]
+    }
+
+    if (type === "bundle/selected_item") {
+      const selectedItem = data["bundle/selected_item"]
+      if (!selectedItem) return []
+      return await parseItemDefinition(assets, selectedItem, {}, display)
     }
 
     return []
