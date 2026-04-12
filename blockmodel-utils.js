@@ -1053,6 +1053,8 @@ async function resolveSpecialModel(assets, data, base) {
   let offset, rotation
   if (data.type === "banner") {
     model.tints = [COLOURS.dye[data.color]]
+  } else if (data.type === "book" || data.type === "bell") {
+    rotation = [0, 180, 0]
   } else if (data.type === "bed") {
     model.textures = {
       bed: `entity/bed/${normalize(data.texture)}`
@@ -1065,6 +1067,11 @@ async function resolveSpecialModel(assets, data, base) {
   } else if (data.type === "shulker_box") {
     model.textures = {
       shulker_box: `entity/shulker/${normalize(data.texture)}`
+    }
+  } else if (data.type === "end_cube") {
+    model.shader = {
+      type: "end_portal",
+      layers: data.effect === "gateway" ? 16 : 15
     }
   } else if (data.type === "copper_golem_statue") {
     model.textures = {
