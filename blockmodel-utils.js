@@ -97,6 +97,12 @@ export const COLOURS = {
     long_strength: ["strength"], strong_strength: ["strength"],
     long_weakness: ["weakness"],
     long_slow_falling: ["slow_falling"]
+  },
+  team: {
+    black: 0, dark_blue: 170, dark_green: 43520, dark_aqua: 43690,
+    dark_red: 11141120, dark_purple: 11141290, gold: 16755200, gray: 11184810,
+    dark_gray: 5592405, blue: 5592575, green: 5635925, aqua: 5636095,
+    red: 16733525, light_purple: 16733695, yellow: 16777045, white: 16777215
   }
 }
 
@@ -640,7 +646,10 @@ export async function parseItemDefinition(assets, itemId, data = {}, display = "
           continue
         }
         const type = normalize(tint.type)
-        if (type === "dye" && data["dyed_color"] !== undefined) {
+        if (type === "team" && data["team"] !== undefined) {
+          const teamColor = COLOURS.team[normalize(data["team"])]
+          tints.push(teamColor !== undefined ? parseColor(teamColor) : parseColor(tint.default ?? 16777215))
+        } else if (type === "dye" && data["dyed_color"] !== undefined) {
           tints.push(parseColor(data["dyed_color"]))
         } else if (type === "map_color" && data["map_color"] !== undefined) {
           tints.push(parseColor(data["map_color"]))
