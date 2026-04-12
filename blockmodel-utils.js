@@ -1434,7 +1434,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
         texRef = model.textures?.[texRef.slice(1)]
       }
 
-      materials.push(await makeMaterial(await loadModelTexture(texRef, tint), assets, model.shader))
+      materials.push(await makeMaterial(await loadModelTexture(texRef, tint), assets, model.shader, model.double_sided))
     }
 
     const mesh = new THREE.Mesh(geometry, materials)
@@ -1515,7 +1515,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
   scene.add(rootGroup)
 }
 
-async function makeMaterial(texture, assets, shader) {
+async function makeMaterial(texture, assets, shader, doubleSided) {
   if (shader?.type === "end_portal") {
     const skyPath = await fileExists(`assets/minecraft/textures/environment/end_sky.png`, assets)
     return new THREE.ShaderMaterial({
@@ -1615,6 +1615,7 @@ async function makeMaterial(texture, assets, shader) {
     map: texture,
     vertexColors: true,
     transparent: true,
-    alphaTest: 0.01
+    alphaTest: 0.01,
+    side: doubleSided ? THREE.DoubleSide : THREE.FrontSide
   })
 }

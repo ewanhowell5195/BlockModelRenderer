@@ -1,4 +1,5 @@
 {
+  "double_sided": true,
   "format_version": "1.21.11",
   "credit": "By Ewan Howell",
   "texture_size": [64, 32],
