@@ -560,10 +560,21 @@ export async function parseItemDefinition(assets, itemId, data = {}, display = "
       for (const tint of model.tints) {
         if (typeof tint === "string") {
           tints.push(tint)
-        } else if (normalize(tint.type) === "grass") {
-          tints.push(await getColorMapTint(assets, "grass", tint.temperature, tint.downfall))
-        } else if (tint.value || tint.default) {
-          tints.push("#" + ((tint.value ?? tint.default) >>> 0).toString(16).padStart(8, "0").slice(2))
+          continue
+        }
+        const type = normalize(tint.type)
+        if (type === "dye" && data["dyed_color"] !== undefined) {
+          const c = data["dyed_color"]
+          tints.push(typeof c === "string" && c.startsWith("#") ? c : "#" + (c >>> 0).toString(16).padStart(8, "0").slice(2))
+        } else if (type === "grass" || type === "foliage" || type === "dry_foliage") {
+          tints.push(await getColorMapTint(assets, type, tint.temperature, tint.downfall))
+        } else if (tint.value !== undefined || tint.default !== undefined) {
+          const color = tint.value ?? tint.default
+          if (Array.isArray(color)) {
+            tints.push("#" + color.map(c => Math.round(c * 255).toString(16).padStart(2, "0")).join(""))
+          } else {
+            tints.push("#" + (color >>> 0).toString(16).padStart(8, "0").slice(2))
+          }
         } else {
           tints.push("#FFFFFF")
         }
