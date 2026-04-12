@@ -642,6 +642,8 @@ export async function parseItemDefinition(assets, itemId, data = {}, display = "
         const type = normalize(tint.type)
         if (type === "dye" && data["dyed_color"] !== undefined) {
           tints.push(parseColor(data["dyed_color"]))
+        } else if (type === "map_color" && data["map_color"] !== undefined) {
+          tints.push(parseColor(data["map_color"]))
         } else if (type === "potion" && data["potion_contents"]?.potion) {
           const color = getPotionColor(data["potion_contents"].potion)
           tints.push(color ?? parseColor(tint.default ?? -13083194))
