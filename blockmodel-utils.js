@@ -1211,10 +1211,10 @@ export async function loadModel(scene, assets, model, display = "gui") {
     { dir: new THREE.Vector3(-0.3641, 0.3030, 0.8807), d: 0.5754 },
     { dir: new THREE.Vector3(-0.0006, 0.9984, 0.0572), d: 0.1704 },
   ] : [
-    { dir: new THREE.Vector3(-0.7684, 0.6194, -0.1607), d: 0.6813 },
-    { dir: new THREE.Vector3(-0.1903, 0.9213, 0.3392), d: 0.3353 },
+    { dir: new THREE.Vector3(0.1079, 0.9751, 0.1940), d: 0.5893 },
+    { dir: new THREE.Vector3(0.9269, 0.2779, -0.2522), d: 0.6022 },
   ]
-  const ambient = isFront ? 0.4907 : 0.4006
+  const ambient = isFront ? 0.4907 : 0.4
 
   const containerEuler = new THREE.Euler(
     THREE.MathUtils.degToRad(-(model?.x ?? 0)),
