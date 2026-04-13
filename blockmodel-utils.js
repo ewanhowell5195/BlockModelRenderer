@@ -1208,11 +1208,14 @@ export async function loadModel(scene, assets, model, display = "gui") {
 
   const isFront = model.gui_light === "front"
   const light0 = isFront
-    ? new THREE.Vector3(0.1969, 0.8730, 0.4463)
-    : new THREE.Vector3(-0.0453, 0.9836, 0.1744)
+    ? new THREE.Vector3(-0.2644, 0.3362, 0.9039)
+    : new THREE.Vector3(-0.0737, 0.9765, 0.2028)
   const light1 = isFront
-    ? new THREE.Vector3(-0.6619, -0.1733, 0.7293)
-    : new THREE.Vector3(-0.9714, 0.1614, -0.1741)
+    ? new THREE.Vector3(-0.3673, 0.5256, -0.7674)
+    : new THREE.Vector3(-0.9607, 0.2085, -0.1834)
+  const ambient = isFront ? 0.5119 : 0.3998
+  const diffuse0 = isFront ? 0.5650 : 0.5641
+  const diffuse1 = isFront ? 0.7035 : 0.5827
 
   const containerEuler = new THREE.Euler(
     THREE.MathUtils.degToRad(-(model?.x ?? 0)),
@@ -1249,7 +1252,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
     normal.applyQuaternion(displayQuat)
     const d0 = Math.max(0, normal.dot(light0))
     const d1 = Math.max(0, normal.dot(light1))
-    const v = Math.min(1, 0.4 + 0.6 * d0 + 0.6 * d1)
+    const v = Math.min(1, ambient + diffuse0 * d0 + diffuse1 * d1)
     return [v, v, v]
   }
 
