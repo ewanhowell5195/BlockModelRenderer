@@ -1207,15 +1207,14 @@ export async function loadModel(scene, assets, model, display = "gui") {
   }
 
   const isFront = model.gui_light === "front"
-  const light0 = isFront
-    ? new THREE.Vector3(-0.2644, 0.3362, 0.9039)
-    : new THREE.Vector3(-0.0737, 0.9765, 0.2028)
-  const light1 = isFront
-    ? new THREE.Vector3(-0.3673, 0.5256, -0.7674)
-    : new THREE.Vector3(-0.9607, 0.2085, -0.1834)
-  const ambient = isFront ? 0.5119 : 0.3998
-  const diffuse0 = isFront ? 0.5650 : 0.5641
-  const diffuse1 = isFront ? 0.7035 : 0.5827
+  const lights = isFront ? [
+    { dir: new THREE.Vector3(-0.3641, 0.3030, 0.8807), d: 0.5754 },
+    { dir: new THREE.Vector3(-0.0006, 0.9984, 0.0572), d: 0.1704 },
+  ] : [
+    { dir: new THREE.Vector3(-0.7684, 0.6194, -0.1607), d: 0.6813 },
+    { dir: new THREE.Vector3(-0.1903, 0.9213, 0.3392), d: 0.3353 },
+  ]
+  const ambient = isFront ? 0.4907 : 0.4006
 
   const containerEuler = new THREE.Euler(
     THREE.MathUtils.degToRad(-(model?.x ?? 0)),
@@ -1250,9 +1249,9 @@ export async function loadModel(scene, assets, model, display = "gui") {
     }
     normal.applyQuaternion(containerQuat)
     normal.applyQuaternion(displayQuat)
-    const d0 = Math.max(0, normal.dot(light0))
-    const d1 = Math.max(0, normal.dot(light1))
-    const v = Math.min(1, ambient + diffuse0 * d0 + diffuse1 * d1)
+    let v = ambient
+    for (const light of lights) v += light.d * Math.max(0, normal.dot(light.dir))
+    v = Math.min(1, v)
     return [v, v, v]
   }
 
