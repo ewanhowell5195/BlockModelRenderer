@@ -1050,6 +1050,8 @@ async function resolveSpecialModel(assets, data, base) {
   let modelPath
   if (originalType === "chest" && data.chest_type && data.chest_type !== "single") {
     modelPath = `~block/chest/_template_chest_${data.chest_type}`
+  } else if (originalType === "copper_golem_statue" && data.pose && data.pose !== "standing") {
+    modelPath = `~block/copper_golem_statue/_template_copper_golem_statue_${data.pose}`
   } else {
     const basePath = base ? "~" + resolveNamespace(base).item : null
     if (basePath && await fileExists(`assets/minecraft/models/${basePath}.json`, assets)) {
@@ -1114,7 +1116,7 @@ async function resolveSpecialModel(assets, data, base) {
       break
     case "copper_golem_statue":
       model.textures = { golem: `${normalize(data.texture).slice(9).slice(0, -4)}` }
-      offset = [0, -3.8]
+      offset = [8, 0, 8]
       rotation = [180, 180, 0]
       break
   }
@@ -1302,7 +1304,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
   }
 
   if (model.offset) {
-    rootGroup.position.set(...model.offset)
+    containerGroup.position.set(...model.offset)
   }
 
   for (const element of model.elements || []) {
@@ -1468,8 +1470,8 @@ export async function loadModel(scene, assets, model, display = "gui") {
       if (axis) {
         rotGroup.rotateOnAxis(AXIS_VECTORS[axis], THREE.MathUtils.degToRad(angle))
       } else {
-        rotGroup.rotateZ(THREE.MathUtils.degToRad(-(z ?? 0)))
-        rotGroup.rotateY(THREE.MathUtils.degToRad(-(y ?? 0)))
+        rotGroup.rotateZ(THREE.MathUtils.degToRad(z ?? 0))
+        rotGroup.rotateY(THREE.MathUtils.degToRad(y ?? 0))
         rotGroup.rotateX(THREE.MathUtils.degToRad(x ?? 0))
       }
 

@@ -4,8 +4,8 @@
   "elements": [
     {
       "name": "head",
-      "from": [3.985, 10.985, 2.985],
-      "to": [12.015, 16.015, 13.015],
+      "from": [4, 11, 3],
+      "to": [12, 16, 13],
       "rotation": {"angle": 0, "axis": "y", "origin": [8, 0, 8]},
       "faces": {
         "north": {"uv": [2.5, 2.5, 4.5, 3.75], "texture": "#golem"},
@@ -32,8 +32,8 @@
     },
     {
       "name": "head",
-      "from": [7.015, 16.015, 7.015],
-      "to": [8.985, 19.985, 8.985],
+      "from": [7.01, 16.01, 7.01],
+      "to": [8.99, 19.99, 8.99],
       "rotation": {"angle": 0, "axis": "y", "origin": [8, 0, 8]},
       "faces": {
         "north": {"uv": [9.75, 2.5, 10.25, 3.5], "texture": "#golem"},
@@ -46,8 +46,8 @@
     },
     {
       "name": "head",
-      "from": [6.015, 20.015, 6.015],
-      "to": [9.985, 23.985, 9.985],
+      "from": [6.01, 20.01, 6.01],
+      "to": [9.99, 23.99, 9.99],
       "rotation": {"angle": 0, "axis": "y", "origin": [8, 0, 8]},
       "faces": {
         "north": {"uv": [10.25, 1, 11.25, 2], "texture": "#golem"},
@@ -102,8 +102,8 @@
     },
     {
       "name": "left_leg",
-      "from": [4, 0, 6],
-      "to": [8, 5, 10],
+      "from": [4.1, 0, 6],
+      "to": [8.1, 5, 10],
       "rotation": {"angle": 0, "axis": "y", "origin": [8, 0, 8]},
       "faces": {
         "north": {"uv": [5, 7.75, 6, 9], "texture": "#golem"},
@@ -116,8 +116,8 @@
     },
     {
       "name": "right_leg",
-      "from": [8, 0, 6],
-      "to": [12, 5, 10],
+      "from": [7.9, 0, 6.01],
+      "to": [11.9, 5, 10.01],
       "rotation": {"angle": 0, "axis": "y", "origin": [8, 0, 8]},
       "faces": {
         "north": {"uv": [1, 7.75, 2, 9], "texture": "#golem"},
