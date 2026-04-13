@@ -1197,96 +1197,59 @@ export async function loadModel(scene, assets, model, display = "gui") {
   }
   rotation = rotation.map(e => e + 0.00001)
 
-  let faceNormals = {
-    west:   new THREE.Vector3(-1, 0, 0),
-    east:   new THREE.Vector3(1, 0, 0),
-    up:     new THREE.Vector3(0, 1, 0),
-    down:   new THREE.Vector3(0, -1, 0),
-    south:  new THREE.Vector3(0, 0, 1),
-    north:  new THREE.Vector3(0, 0, -1)
+  const cardinalNormals = {
+    east:  new THREE.Vector3(1, 0, 0),
+    west:  new THREE.Vector3(-1, 0, 0),
+    up:    new THREE.Vector3(0, 1, 0),
+    down:  new THREE.Vector3(0, -1, 0),
+    south: new THREE.Vector3(0, 0, 1),
+    north: new THREE.Vector3(0, 0, -1)
   }
 
-  const zRot = ((model?.z ?? 0) % 360 + 360) % 360
-  for (let i = 0; i < zRot / 90; i++) {
-    faceNormals = {
-      north: faceNormals.north,
-      south: faceNormals.south,
-      up: faceNormals.east,
-      east: faceNormals.down,
-      down: faceNormals.west,
-      west: faceNormals.up
-    }
-  }
+  const isFront = model.gui_light === "front"
+  const light0 = isFront
+    ? new THREE.Vector3(0.1969, 0.8730, 0.4463)
+    : new THREE.Vector3(-0.0453, 0.9836, 0.1744)
+  const light1 = isFront
+    ? new THREE.Vector3(-0.6619, -0.1733, 0.7293)
+    : new THREE.Vector3(-0.9714, 0.1614, -0.1741)
 
-  const yRot = ((model?.y ?? 0) % 360 + 360) % 360
-  for (let i = 0; i < yRot / 90; i++) {
-    faceNormals = {
-      up: faceNormals.up,
-      down: faceNormals.down,
-      north: faceNormals.east,
-      east: faceNormals.south,
-      south: faceNormals.west,
-      west: faceNormals.north
-    }
-  }
+  const containerEuler = new THREE.Euler(
+    THREE.MathUtils.degToRad(-(model?.x ?? 0)),
+    THREE.MathUtils.degToRad(-(model?.y ?? 0)),
+    THREE.MathUtils.degToRad(model?.z ?? 0),
+    "ZYX"
+  )
+  const containerQuat = new THREE.Quaternion().setFromEuler(containerEuler)
 
-  const xRot = ((model?.x ?? 0) % 360 + 360) % 360
-  for (let i = 0; i < xRot / 90; i++) {
-    faceNormals = {
-      east: faceNormals.east,
-      west: faceNormals.west,
-      up: faceNormals.north,
-      north: faceNormals.down,
-      down: faceNormals.south,
-      south: faceNormals.up
-    }
-  }
-
-  const euler = new THREE.Euler(
+  const displayEuler = new THREE.Euler(
     THREE.MathUtils.degToRad(rotation[0]),
     THREE.MathUtils.degToRad(rotation[1]),
     THREE.MathUtils.degToRad(rotation[2]),
     "YXZ"
   )
+  const displayQuat = new THREE.Quaternion().setFromEuler(displayEuler)
 
-  const rotated = Object.fromEntries(
-    Object.entries(faceNormals).map(([face, vec]) => [
-      face,
-      vec.clone().applyEuler(euler)
-    ])
-  )
-
-  const faceMapping = Object.fromEntries(
-   Object.entries(rotated).map(([face, vec]) => {
-     const abs = [Math.abs(vec.x), Math.abs(vec.y), Math.abs(vec.z)]
-     const max = abs.indexOf(Math.max(...abs))
-     return [face, 
-       max === 0 ? (vec.x > 0 ? "east" : "west") :
-       max === 1 ? (vec.y > 0 ? "up" : "down") :
-                   (vec.z > 0 ? "south" : "north")
-     ]
-   })
-  )
-
-  const upColour = [0.988, 0.988, 0.988]
-  const downColour = [0.471, 0.471, 0.471]
-  const cols = [0.471, 0.494, 0.686, 0.851, 0.988]
-  const isFront = model.gui_light === "front"
-  const lightDir = isFront ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(-1, 0, 0)
-
-  const getFaceColour = faceName => {
-    const newFace = faceMapping[faceName]
-    if (newFace === "up") return upColour
-    if (newFace === "down") return downColour
-
-    const normal = rotated[faceName]
-    let t = Math.max(0, normal.dot(lightDir))
-    if (isFront && normal.x < 0) t = Math.min(1, (t + 1.2) / 2)
-
-    const scaled = Math.asin(t) * 2 / Math.PI * (cols.length - 1)
-    const i = Math.floor(scaled)
-    const f = scaled - i
-    const v = (cols[i] ?? cols[cols.length - 1]) + ((cols[i + 1] ?? cols[cols.length - 1]) - (cols[i] ?? cols[cols.length - 1])) * f
+  const getFaceColour = (faceName, elementRotation) => {
+    const normal = cardinalNormals[faceName].clone()
+    if (elementRotation) {
+      const { axis, angle, x, y, z } = elementRotation
+      if (axis) {
+        normal.applyAxisAngle(AXIS_VECTORS[axis], THREE.MathUtils.degToRad(angle))
+      } else {
+        normal.applyEuler(new THREE.Euler(
+          THREE.MathUtils.degToRad(x ?? 0),
+          THREE.MathUtils.degToRad(y ?? 0),
+          THREE.MathUtils.degToRad(z ?? 0),
+          "ZYX"
+        ))
+      }
+    }
+    normal.applyQuaternion(containerQuat)
+    normal.applyQuaternion(displayQuat)
+    const d0 = Math.max(0, normal.dot(light0))
+    const d1 = Math.max(0, normal.dot(light1))
+    const v = Math.min(1, 0.4 + 0.6 * d0 + 0.6 * d1)
     return [v, v, v]
   }
 
@@ -1403,7 +1366,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
       if (element.shade === false) {
         colour = [1, 1, 1]
       } else {
-        colour = getFaceColour(faceName)
+        colour = getFaceColour(faceName, element.rotation)
       }
 
       for (let j = 0; j < 4; j++) {
