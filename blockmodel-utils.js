@@ -386,8 +386,8 @@ export function makeModelScene() {
 }
 
 export async function renderModelScene(scene, camera, args) {
-  const width = args?.width ?? 1024
-  const height = args?.height ?? 1024
+  const baseWidth = args?.width ?? 1024
+  const baseHeight = args?.height ?? 1024
   const { clearColor, clearAlpha } = parseBackground(args?.background)
 
   const animatedTextures = []
@@ -413,8 +413,8 @@ export async function renderModelScene(scene, camera, args) {
     const buffer = await render({
       scene,
       camera,
-      width,
-      height,
+      width: baseWidth,
+      height: baseHeight,
       path: finalPath,
       format: finalFormat,
       clearColor,
@@ -424,9 +424,44 @@ export async function renderModelScene(scene, camera, args) {
     return args?.animated ? { buffer, format: "png" } : buffer
   }
 
-  const frameCount = Math.max(...animatedTextures.map(t => t.userData.frames.length))
-  const driver = animatedTextures.find(t => t.userData.frames.length === frameCount)
-  const delay = Array.from({ length: frameCount }, (_, f) => (driver.userData.times?.[f] ?? 1) * 50)
+  const width = args?.animatedWidth ?? baseWidth
+  const height = args?.animatedHeight ?? baseHeight
+
+  const schedules = animatedTextures.map(tex => {
+    const times = tex.userData.times ?? tex.userData.frames.map(() => 1)
+    const total = times.reduce((s, t) => s + t, 0)
+    const boundaries = [0]
+    let acc = 0
+    for (const t of times) {
+      acc += t
+      boundaries.push(acc)
+    }
+    return { tex, times, total, boundaries }
+  })
+  const totalDuration = Math.max(...schedules.map(s => s.total))
+
+  const eventSet = new Set()
+  for (const s of schedules) {
+    for (let loop = 0; loop * s.total < totalDuration; loop++) {
+      for (const b of s.boundaries) {
+        const t = loop * s.total + b
+        if (t < totalDuration) eventSet.add(t)
+      }
+    }
+  }
+  const events = [...eventSet].sort((a, b) => a - b)
+  const frameCount = events.length
+
+  const delay = []
+  let delayAcc = 0
+  let delayPrev = 0
+  for (let f = 0; f < frameCount; f++) {
+    const dur = (f + 1 < frameCount ? events[f + 1] : totalDuration) - events[f]
+    delayAcc += dur * 50
+    const rounded = Math.round(delayAcc)
+    delay.push(rounded - delayPrev)
+    delayPrev = rounded
+  }
 
   const glCtx = createContext(width, height)
   const renderer = new THREE.WebGLRenderer({ context: glCtx })
@@ -444,10 +479,18 @@ export async function renderModelScene(scene, camera, args) {
   const stacked = Buffer.alloc(width * height * 4 * frameCount)
 
   for (let f = 0; f < frameCount; f++) {
-    for (const tex of animatedTextures) {
-      const frames = tex.userData.frames
-      tex.image = frames[f % frames.length]
-      tex.needsUpdate = true
+    const t = events[f]
+    for (const s of schedules) {
+      const localT = t % s.total
+      let frameIdx = 0
+      for (let i = 0; i < s.boundaries.length - 1; i++) {
+        if (localT >= s.boundaries[i] && localT < s.boundaries[i + 1]) {
+          frameIdx = i
+          break
+        }
+      }
+      s.tex.image = s.tex.userData.frames[frameIdx]
+      s.tex.needsUpdate = true
     }
 
     renderer.render(scene, camera)
@@ -993,7 +1036,43 @@ async function loadMinecraftTexture(path, assets) {
     playbackTimes = stripFrames.map(() => defaultTime)
   }
 
+  if (meta.interpolate) {
+    const maxSubFrames = 8
+    const expanded = []
+    const expandedTimes = []
+    for (let i = 0; i < playback.length; i++) {
+      const a = playback[i]
+      const b = playback[(i + 1) % playback.length]
+      const time = playbackTimes[i]
+      const steps = Math.min(time, maxSubFrames)
+      const subTime = time / steps
+      for (let t = 0; t < steps; t++) {
+        expanded.push(interpolateFrames(a, b, t / steps))
+        expandedTimes.push(subTime)
+      }
+    }
+    playback = expanded
+    playbackTimes = expandedTimes
+  }
+
   return { image: playback[0], frames: playback, times: playbackTimes, animated: playback.length > 1 }
+}
+
+function interpolateFrames(a, b, ratio) {
+  const canvas = new Canvas(a.width, a.height)
+  const ctx = canvas.getContext("2d")
+  const da = a.getContext("2d").getImageData(0, 0, a.width, a.height).data
+  const db = b.getContext("2d").getImageData(0, 0, b.width, b.height).data
+  const out = ctx.createImageData(a.width, a.height)
+  const inv = 1 - ratio
+  for (let i = 0; i < out.data.length; i += 4) {
+    out.data[i]     = Math.round(da[i]     * inv + db[i]     * ratio)
+    out.data[i + 1] = Math.round(da[i + 1] * inv + db[i + 1] * ratio)
+    out.data[i + 2] = Math.round(da[i + 2] * inv + db[i + 2] * ratio)
+    out.data[i + 3] = da[i + 3]
+  }
+  ctx.putImageData(out, 0, 0)
+  return canvas
 }
 
 export async function resolveModelData(assets, model) {

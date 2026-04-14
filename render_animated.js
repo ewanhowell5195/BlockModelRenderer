@@ -19,15 +19,10 @@ fs.mkdirSync(path.join(outputDir, "items"), { recursive: true })
 const blockstateFiles = await listDirectory("assets/minecraft/blockstates", assets).then(arr => arr.filter(f => f.endsWith(".json")))
 const itemFiles = await listDirectory("assets/minecraft/items", assets).then(arr => arr.filter(f => f.endsWith(".json")))
 
-async function processChunk(files, prepare) {
+async function processChunk(files, handler) {
   for (let i = 0; i < files.length; i += chunkSize) {
     const chunk = files.slice(i, i + chunkSize)
-    const prepared = await Promise.all(chunk.map(prepare))
-    for (const entry of prepared) {
-      if (!entry) continue
-      await renderModelScene(entry.scene, entry.camera, { path: entry.path, animated: true })
-      console.log("Done", entry.kind, entry.modelId)
-    }
+    await Promise.all(chunk.map(handler))
   }
 }
 
@@ -46,7 +41,7 @@ async function hasAnimatedTexture(resolved) {
   return false
 }
 
-async function prepareBlock(file) {
+async function handleBlock(file) {
   const modelId = path.basename(file, ".json")
   const models = await parseBlockstate(assets, modelId)
   let animated = false
@@ -56,16 +51,17 @@ async function prepareBlock(file) {
     resolvedModels.push(resolved)
     if (await hasAnimatedTexture(resolved)) animated = true
   }
-  if (!animated) return null
+  if (!animated) return
 
   const { scene, camera } = makeModelScene()
   for (const resolved of resolvedModels) {
     await loadModel(scene, assets, resolved, { display: blockDisplay })
   }
-  return { kind: "block", modelId, scene, camera, path: `${outputDir}/blocks/${modelId}.png` }
+  await renderModelScene(scene, camera, { path: `${outputDir}/blocks/${modelId}.png`, animated: true })
+  console.log("Done block", modelId)
 }
 
-async function prepareItem(file) {
+async function handleItem(file) {
   const modelId = path.basename(file, ".json")
   const models = await parseItemDefinition(assets, modelId, { display: itemDisplay })
   let animated = false
@@ -75,14 +71,15 @@ async function prepareItem(file) {
     resolvedModels.push(resolved)
     if (await hasAnimatedTexture(resolved)) animated = true
   }
-  if (!animated) return null
+  if (!animated) return
 
   const { scene, camera } = makeModelScene()
   for (const resolved of resolvedModels) {
     await loadModel(scene, assets, resolved, { display: itemDisplay })
   }
-  return { kind: "item", modelId, scene, camera, path: `${outputDir}/items/${modelId}.png` }
+  await renderModelScene(scene, camera, { path: `${outputDir}/items/${modelId}.png`, animated: true })
+  console.log("Done item", modelId)
 }
 
-await processChunk(blockstateFiles, prepareBlock)
-await processChunk(itemFiles, prepareItem)
+await processChunk(blockstateFiles, handleBlock)
+await processChunk(itemFiles, handleItem)
