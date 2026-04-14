@@ -292,7 +292,10 @@ export async function renderItem(args = {}) {
   args.id ??= ""
   args.assets ??= []
   args.properties ??= {}
-  args.display ??= {}
+  args.display ??= {
+    type: "fallback",
+    display: "gui"
+  }
 
   const { scene, camera } = makeModelScene()
 
@@ -1199,13 +1202,13 @@ export async function loadModel(scene, assets, model, display = "gui") {
 
   const isFront = model.gui_light === "front"
   const lightConfig = isFront ? {
-    light0: [0.5746, -0.7830, -0.2380], d0: 0.4674,
-    light1: [-0.3204, 0.4495, 0.8338], d1: 1.0087,
-    ambient: 0.2469
+    light0: [-0.2209, 0.1706, 0.9603], d0: 0.5997,
+    light1: [-0.2215, 0.9693, 0.1070], d1: 0.5816,
+    ambient: 0.3968
   } : {
-    light0: [-0.9299, 0.2700, -0.2499], d0: 0.6022,
-    light1: [-0.1040, 0.9760, 0.1912], d1: 0.5926,
-    ambient: 0.4001
+    light0: [-0.8636, 0.1228, -0.4891], d0: 0.9141,
+    light1: [-0.1755, 0.9622, 0.2082], d1: 0.6169,
+    ambient: 0.4024
   }
 
   const rootGroup = new THREE.Group()
