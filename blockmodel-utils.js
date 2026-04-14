@@ -1208,13 +1208,13 @@ export async function loadModel(scene, assets, model, display = "gui") {
 
   const isFront = model.gui_light === "front"
   const lights = isFront ? [
-    { dir: new THREE.Vector3(-0.3641, 0.3030, 0.8807), d: 0.5754 },
-    { dir: new THREE.Vector3(-0.0006, 0.9984, 0.0572), d: 0.1704 },
+    { dir: new THREE.Vector3(-0.3581, 0.3038, 0.8829), d: 0.5740 },
+    { dir: new THREE.Vector3(-0.0235, 0.9981, 0.0568), d: 0.1716 },
   ] : [
-    { dir: new THREE.Vector3(0.1079, 0.9751, 0.1940), d: 0.5893 },
-    { dir: new THREE.Vector3(0.9269, 0.2779, -0.2522), d: 0.6022 },
+    { dir: new THREE.Vector3(-0.9552, 0.1488, -0.2560), d: 0.5867 },
+    { dir: new THREE.Vector3(-0.1018, 0.9771, 0.1868), d: 0.6025 },
   ]
-  const ambient = isFront ? 0.4907 : 0.4
+  const ambient = isFront ? 0.4907 : 0.4001
 
   const containerEuler = new THREE.Euler(
     THREE.MathUtils.degToRad(-(model?.x ?? 0)),
@@ -1228,7 +1228,7 @@ export async function loadModel(scene, assets, model, display = "gui") {
     THREE.MathUtils.degToRad(rotation[0]),
     THREE.MathUtils.degToRad(rotation[1]),
     THREE.MathUtils.degToRad(rotation[2]),
-    "YXZ"
+    "XYZ"
   )
   const displayQuat = new THREE.Quaternion().setFromEuler(displayEuler)
 
