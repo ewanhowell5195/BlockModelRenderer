@@ -954,27 +954,20 @@ async function loadMinecraftTexture(path, assets) {
     return { image }
   }
 
-  const frameWidth = meta.width
-  const frameHeight = meta.height
+  const defaultSize = Math.min(image.width, image.height)
+  const cropW = meta.width ?? defaultSize
+  const cropH = meta.height ?? defaultSize
 
-  const cropW =
-    frameWidth ??
-    (frameHeight
-      ? image.width
-      : Math.min(image.width, image.height))
-
-  const cropH =
-    frameHeight ??
-    (frameWidth
-      ? image.height
-      : Math.min(image.width, image.height))
-
-  const frameCount = Math.max(1, Math.floor(image.height / cropH))
+  const cols = Math.max(1, Math.floor(image.width / cropW))
+  const rows = Math.max(1, Math.floor(image.height / cropH))
+  const frameCount = cols * rows
   const stripFrames = []
   for (let i = 0; i < frameCount; i++) {
+    const sx = (i % cols) * cropW
+    const sy = Math.floor(i / cols) * cropH
     const canvas = new Canvas(cropW, cropH)
     const ctx = canvas.getContext("2d")
-    ctx.drawImage(image, 0, i * cropH, cropW, cropH, 0, 0, cropW, cropH)
+    ctx.drawImage(image, sx, sy, cropW, cropH, 0, 0, cropW, cropH)
     stripFrames.push(canvas)
   }
 
