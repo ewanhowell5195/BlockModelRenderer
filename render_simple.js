@@ -10,7 +10,8 @@ fs.mkdirSync("renders/simple", { recursive: true })
 await renderBlock({
   id: "cactus",
   assets,
-  path: "renders/simple/block.png"
+  path: "renders/simple/block.png",
+  animated: true
 })
 
 // Render from item definition
@@ -18,9 +19,9 @@ await renderBlock({
 await renderItem({
   id: "mace",
   assets,
-  path: "renders/simple/item.png"
+  path: "renders/simple/item.png",
+  animated: true
 })
-
 
 // Render model json
 
@@ -53,5 +54,6 @@ await renderModel({
     ]
   },
   assets,
-  path: "renders/simple/model.png"
+  path: "renders/simple/model.png",
+  animated: true
 })

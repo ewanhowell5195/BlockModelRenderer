@@ -285,7 +285,7 @@ export async function renderBlock(args = {}) {
     await loadModel(scene, args.assets, resolved, { display: args.display })
   }
 
-  return renderModelScene(scene, camera, { path: args.path, format: args.format })
+  return renderModelScene(scene, camera, { path: args.path, format: args.format, animated: args.animated, background: args.background })
 }
 
 export async function renderItem(args = {}) {
@@ -306,7 +306,7 @@ export async function renderItem(args = {}) {
     await loadModel(scene, args.assets, resolved, { display: args.display })
   }
 
-  return renderModelScene(scene, camera, { path: args.path, format: args.format })
+  return renderModelScene(scene, camera, { path: args.path, format: args.format, animated: args.animated, background: args.background })
 }
 
 export async function renderModel(args) {
@@ -322,9 +322,58 @@ export async function renderModel(args) {
   const { scene, camera } = makeModelScene()
 
   const resolved = await resolveModelData(args.assets, { model: args.model})
-  await loadModel(scene, args.assets, resolved, args.display)
+  await loadModel(scene, args.assets, resolved, { display: args.display })
 
-  return renderModelScene(scene, camera, { path: args.path, format: args.format })
+  return renderModelScene(scene, camera, { path: args.path, format: args.format, animated: args.animated, background: args.background })
+}
+
+function resolveAnimatedFormat(animated, format) {
+  if (!animated) return null
+  if (animated === true) return format === "webp" ? "webp" : "gif"
+  return animated
+}
+
+function parseBackground(bg) {
+  if (bg === undefined || bg === null) return { clearColor: undefined, clearAlpha: undefined }
+  if (typeof bg === "number") return { clearColor: bg, clearAlpha: 1 }
+  if (typeof bg === "object") {
+    const r = bg.r ?? 0, g = bg.g ?? 0, b = bg.b ?? 0
+    const a = bg.a ?? 1
+    return { clearColor: (r << 16) | (g << 8) | b, clearAlpha: a }
+  }
+  if (typeof bg !== "string") return { clearColor: undefined, clearAlpha: undefined }
+
+  // Hex: #rgb, #rgba, #rrggbb, #rrggbbaa
+  if (bg.startsWith("#")) {
+    let hex = bg.slice(1)
+    if (hex.length === 3 || hex.length === 4) hex = hex.split("").map(c => c + c).join("")
+    if (hex.length !== 6 && hex.length !== 8) return { clearColor: undefined, clearAlpha: undefined }
+    const r = parseInt(hex.slice(0, 2), 16)
+    const g = parseInt(hex.slice(2, 4), 16)
+    const b = parseInt(hex.slice(4, 6), 16)
+    const a = hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1
+    return { clearColor: (r << 16) | (g << 8) | b, clearAlpha: a }
+  }
+
+  // rgb(r, g, b) / rgba(r, g, b, a)
+  const rgbMatch = bg.match(/^rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)$/i)
+  if (rgbMatch) {
+    const r = parseInt(rgbMatch[1])
+    const g = parseInt(rgbMatch[2])
+    const b = parseInt(rgbMatch[3])
+    const a = rgbMatch[4] !== undefined ? parseFloat(rgbMatch[4]) : 1
+    return { clearColor: (r << 16) | (g << 8) | b, clearAlpha: a }
+  }
+
+  return { clearColor: undefined, clearAlpha: undefined }
+}
+
+function adjustPathForFormat(filePath, format, explicitFormat) {
+  if (!filePath || explicitFormat) return filePath
+  const formatExt = format === "jpeg" ? "jpg" : format
+  const parsed = path.parse(filePath)
+  if (parsed.ext.slice(1).toLowerCase() === formatExt) return filePath
+  return path.format({ ...parsed, base: undefined, ext: "." + formatExt })
 }
 
 export function makeModelScene() {
@@ -337,15 +386,24 @@ export function makeModelScene() {
 }
 
 export async function renderModelScene(scene, camera, args) {
-  return render({
+  // TODO: detect animated textures in the scene
+  const hasAnimation = false
+  const animFormat = hasAnimation ? resolveAnimatedFormat(args?.animated, args?.format) : null
+  const finalFormat = args?.format ?? animFormat
+  const finalPath = animFormat ? adjustPathForFormat(args?.path, animFormat, args?.format) : args?.path
+  const { clearColor, clearAlpha } = parseBackground(args?.background)
+  const buffer = await render({
     scene,
     camera,
     width: args?.width ?? 1024,
     height: args?.height ?? 1024,
-    path: args?.path,
-    format: args?.format,
+    path: finalPath,
+    format: finalFormat,
+    clearColor,
+    clearAlpha,
     colorSpace: THREE.LinearSRGBColorSpace,
   })
+  return args?.animated ? { buffer, format: animFormat ?? "png" } : buffer
 }
 
 function resolveNamespace(str) {
