@@ -18,11 +18,7 @@
       "to": [14, 16, 8],
       "faces": {
         "north": {"uv": [3.5, 3, 6.5, 6], "texture": "#sign"},
-        "east": {"uv": [3.5, 3, 3.5, 6], "texture": "#sign"},
-        "south": {"uv": [6.5, 3, 3.5, 6], "texture": "#sign"},
-        "west": {"uv": [6.5, 3, 6.5, 6], "texture": "#sign"},
-        "up": {"uv": [6.5, 3, 3.5, 3], "texture": "#sign"},
-        "down": {"uv": [9.5, 3, 6.5, 3], "texture": "#sign"}
+        "south": {"uv": [6.5, 3, 3.5, 6], "texture": "#sign"}
       }
     }
   ]
