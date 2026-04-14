@@ -2,6 +2,7 @@
   "type": "module",
   "dependencies": {
     "headless-three": "^1.2.1",
+    "sharp": "^0.34.5",
     "skia-canvas": "^2.0.2"
   }
 }

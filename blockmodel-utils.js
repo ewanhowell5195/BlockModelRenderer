@@ -1,6 +1,8 @@
 import { Canvas, Image, ImageData, loadImage } from "skia-canvas"
 import { fileURLToPath } from "node:url"
 import getTHREE from "headless-three"
+import createContext from "gl"
+import sharp from "sharp"
 import path from "node:path"
 import fs from "node:fs"
 
@@ -343,7 +345,6 @@ function parseBackground(bg) {
   }
   if (typeof bg !== "string") return { clearColor: undefined, clearAlpha: undefined }
 
-  // Hex: #rgb, #rgba, #rrggbb, #rrggbbaa
   if (bg.startsWith("#")) {
     let hex = bg.slice(1)
     if (hex.length === 3 || hex.length === 4) hex = hex.split("").map(c => c + c).join("")
@@ -355,7 +356,6 @@ function parseBackground(bg) {
     return { clearColor: (r << 16) | (g << 8) | b, clearAlpha: a }
   }
 
-  // rgb(r, g, b) / rgba(r, g, b, a)
   const rgbMatch = bg.match(/^rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)$/i)
   if (rgbMatch) {
     const r = parseInt(rgbMatch[1])
@@ -386,24 +386,87 @@ export function makeModelScene() {
 }
 
 export async function renderModelScene(scene, camera, args) {
-  // TODO: detect animated textures in the scene
-  const hasAnimation = false
+  const width = args?.width ?? 1024
+  const height = args?.height ?? 1024
+  const { clearColor, clearAlpha } = parseBackground(args?.background)
+
+  const animatedTextures = []
+  if (args?.animated) {
+    scene.traverse(obj => {
+      if (!obj.isMesh) return
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+      for (const mat of mats) {
+        const tex = mat?.uniforms?.map?.value
+        if (tex?.userData?.frames && !animatedTextures.includes(tex)) {
+          animatedTextures.push(tex)
+        }
+      }
+    })
+  }
+
+  const hasAnimation = animatedTextures.length > 0
   const animFormat = hasAnimation ? resolveAnimatedFormat(args?.animated, args?.format) : null
   const finalFormat = args?.format ?? animFormat
   const finalPath = animFormat ? adjustPathForFormat(args?.path, animFormat, args?.format) : args?.path
-  const { clearColor, clearAlpha } = parseBackground(args?.background)
-  const buffer = await render({
-    scene,
-    camera,
-    width: args?.width ?? 1024,
-    height: args?.height ?? 1024,
-    path: finalPath,
-    format: finalFormat,
-    clearColor,
-    clearAlpha,
-    colorSpace: THREE.LinearSRGBColorSpace,
+
+  if (!hasAnimation) {
+    const buffer = await render({
+      scene,
+      camera,
+      width,
+      height,
+      path: finalPath,
+      format: finalFormat,
+      clearColor,
+      clearAlpha,
+      colorSpace: THREE.LinearSRGBColorSpace,
+    })
+    return args?.animated ? { buffer, format: "png" } : buffer
+  }
+
+  const frameCount = Math.max(...animatedTextures.map(t => t.userData.frames.length))
+
+  const glCtx = createContext(width, height)
+  const renderer = new THREE.WebGLRenderer({ context: glCtx })
+  renderer.setSize(width, height)
+  renderer.outputColorSpace = THREE.LinearSRGBColorSpace
+  if (clearColor !== undefined || clearAlpha !== undefined) {
+    renderer.setClearColor(clearColor ?? 0x000000, clearAlpha ?? 0)
+  }
+
+  camera.projectionMatrix.elements[5] *= -1
+  const gl = renderer.getContext()
+  const currentFrontFace = gl.getParameter(gl.FRONT_FACE)
+  gl.frontFace(currentFrontFace === gl.CCW ? gl.CW : gl.CCW)
+
+  const stacked = Buffer.alloc(width * height * 4 * frameCount)
+
+  for (let f = 0; f < frameCount; f++) {
+    for (const tex of animatedTextures) {
+      const frames = tex.userData.frames
+      tex.image = frames[f % frames.length]
+      tex.needsUpdate = true
+    }
+
+    renderer.render(scene, camera)
+
+    const pixels = new Uint8Array(width * height * 4)
+    glCtx.readPixels(0, 0, width, height, glCtx.RGBA, glCtx.UNSIGNED_BYTE, pixels)
+    Buffer.from(pixels.buffer).copy(stacked, f * width * height * 4)
+  }
+
+  gl.frontFace(currentFrontFace)
+  camera.projectionMatrix.elements[5] *= -1
+  renderer.dispose()
+  glCtx.getExtension("STACKGL_destroy_context")?.destroy()
+
+  let image = sharp(stacked, {
+    raw: { width, height: height * frameCount, channels: 4, premultiplied: true, pages: frameCount, pageHeight: height },
   })
-  return args?.animated ? { buffer, format: animFormat ?? "png" } : buffer
+  image = image[animFormat === "webp" ? "webp" : "gif"]({ loop: 0 })
+  const buffer = await image.toBuffer()
+  if (finalPath) await fs.promises.writeFile(finalPath, buffer)
+  return { buffer, format: animFormat }
 }
 
 function resolveNamespace(str) {
@@ -880,7 +943,7 @@ async function resolveItemModel(assets, def, data, display, accTransform) {
 
 async function loadMinecraftTexture(path, assets) {
   const resolved = await fileExists(path, assets)
-  if (!resolved) return missing
+  if (!resolved) return { image: missing }
 
   const image = await loadImage(resolved)
 
@@ -888,7 +951,7 @@ async function loadMinecraftTexture(path, assets) {
   try {
     meta = JSON.parse(await readFile(resolved + ".mcmeta")).animation ?? {}
   } catch {
-    return image
+    return { image }
   }
 
   const frameWidth = meta.width
@@ -906,11 +969,16 @@ async function loadMinecraftTexture(path, assets) {
       ? image.height
       : Math.min(image.width, image.height))
 
-  const canvas = new Canvas(cropW, cropH)
-  const ctx = canvas.getContext("2d")
-  ctx.drawImage(image, 0, 0, cropW, cropH, 0, 0, cropW, cropH)
+  const frameCount = Math.max(1, Math.floor(image.height / cropH))
+  const frames = []
+  for (let i = 0; i < frameCount; i++) {
+    const canvas = new Canvas(cropW, cropH)
+    const ctx = canvas.getContext("2d")
+    ctx.drawImage(image, 0, i * cropH, cropW, cropH, 0, 0, cropW, cropH)
+    frames.push(canvas)
+  }
 
-  return canvas
+  return { image: frames[0], frames, animated: frameCount > 1 }
 }
 
 export async function resolveModelData(assets, model) {
@@ -1048,7 +1116,8 @@ export async function resolveModelData(assets, model) {
         const tintIndex = Number(match[1])
         const texId = "#" + key
         const { namespace, item } = resolveNamespace(texRef)
-        const image = await loadMinecraftTexture(`assets/${namespace}/textures/${item}.png`, assets)
+        const loaded = await loadMinecraftTexture(`assets/${namespace}/textures/${item}.png`, assets)
+        const image = loaded.image
         const width = image.width
         const height = image.height
         const depth = 16 / Math.max(width, height)
@@ -1223,27 +1292,37 @@ export async function loadModel(scene, assets, model, args) {
   async function loadModelTexture(id, tint) {
     if (textureCache.has(id)) return textureCache.get(id)
 
-    let image
+    let loaded
     if (id) {
       const path = resolveTexturePath(id)
-      image = await loadMinecraftTexture(path, assets)
+      loaded = await loadMinecraftTexture(path, assets)
     } else {
-      image = missing
+      loaded = { image: missing }
+    }
+
+    let image = loaded.image
+    let frames = loaded.frames
+    const applyTint = img => {
+      const canvas = new Canvas(img.width, img.height)
+      const ctx = canvas.getContext("2d")
+      ctx.drawImage(img, 0, 0)
+      ctx.globalCompositeOperation = "multiply"
+      ctx.fillStyle = COLOURS.dye[tint] ?? tint
+      ctx.fillRect(0, 0, img.width, img.height)
+      ctx.globalCompositeOperation = "destination-in"
+      ctx.drawImage(img, 0, 0)
+      return canvas
     }
 
     if (tint) {
-      const canvas = new Canvas(image.width, image.height)
-      const ctx = canvas.getContext("2d")
-      ctx.drawImage(image, 0, 0)
-      ctx.globalCompositeOperation = "multiply"
-      ctx.fillStyle = COLOURS.dye[tint] ?? tint
-      ctx.fillRect(0, 0, image.width, image.height)
-      ctx.globalCompositeOperation = "destination-in"
-      ctx.drawImage(image, 0, 0)
-      image = canvas
+      image = applyTint(image)
+      if (frames) frames = frames.map(applyTint)
     }
 
     const texture = await makeThreeTexture(image)
+    if (loaded.animated && frames) {
+      texture.userData.frames = frames
+    }
 
     textureCache.set(id, texture)
     return texture
