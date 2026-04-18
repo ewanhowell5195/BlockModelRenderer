@@ -82,8 +82,8 @@ Renders a block by its id using the resource pack's blockstates and models.
 | `width` | `1024` | Output width in pixels |
 | `height` | `1024` | Output height in pixels |
 | `animated` | `false` | See [Animated output](#animated-output) |
-| `animatedWidth` | `width` | Width used when animated output is active |
-| `animatedHeight` | `height` | Height used when animated output is active |
+| `animatedWidth` | `width` | Width used when the output is animated |
+| `animatedHeight` | `height` | Height used when the output is animated |
 | `background` | transparent | See [Background](#background) |
 
 Default display:
