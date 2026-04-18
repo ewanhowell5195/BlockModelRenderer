@@ -11,7 +11,7 @@ Render any block, item, or custom model JSON to an image, with full support for 
 * Renders blocks, items, and custom models from a resource pack
 * Full vanilla model, blockstate, and item-definition support, with accurate lighting and tints
 * Animated textures with GIF and WebP output
-* Stack multiple resource packs with higher ones overriding lower ones, just like Minecraft
+* Stack multiple resource packs with higher ones overriding lower ones, just like in Minecraft
 * Virtual asset handlers, serve files from memory, zips, HTTP, anywhere
 * Bundled overrides for block entities that Minecraft renders dynamically (signs, banners, chests, heads, and more)
 * PNG, JPEG, WebP, and AVIF output
