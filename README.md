@@ -1,6 +1,6 @@
 # block-model-renderer
 
-Headless Minecraft block and item rendering for Node.js.
+Minecraft block and item rendering for Node.js.
 Render any block, item, or custom model JSON to an image, with full support for vanilla resource pack features.
 
 [![npm version](https://badge.fury.io/js/block-model-renderer.svg)](https://www.npmjs.com/package/block-model-renderer)
@@ -9,18 +9,12 @@ Render any block, item, or custom model JSON to an image, with full support for 
 ## Features
 
 * Renders blocks, items, and custom models from a resource pack
-* Vanilla-accurate lighting (directional shading, `gui_light` side/front modes)
-* Full model JSON feature support (elements, faces, rotations, display transforms, tints, UV locks, etc.)
-* Blockstate variants and multipart
-* Item definitions with conditions, selects, range dispatch, and tint sources
-* Animated textures from `mcmeta` (frametime, frames array, interpolation)
-* Animated GIF and WebP output with per-frame delays
-* Multi-layered resource packs with `pack.mcmeta` filter support
+* Full vanilla model, blockstate, and item-definition support, with accurate lighting and tints
+* Animated textures with GIF and WebP output
+* Stack multiple resource packs with higher ones overriding lower ones, just like Minecraft
 * Virtual asset handlers, serve files from memory, zips, HTTP, anywhere
-* Texture tinting (biome, dye, potion, etc.)
-* Transparent backgrounds, custom clear colors
-* Works with any PNG, JPEG, WebP, or AVIF output format
-* Bundled overrides for block entities (signs, banners, shulker boxes, chests, conduit, bells, and more) that vanilla Minecraft renders dynamically and has no model JSON for
+* Bundled overrides for block entities that Minecraft renders dynamically (signs, banners, chests, heads, and more)
+* PNG, JPEG, WebP, and AVIF output
 
 ## Install
 
