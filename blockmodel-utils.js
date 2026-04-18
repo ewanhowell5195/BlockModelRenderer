@@ -174,30 +174,6 @@ function composeTransformations(parent, child) {
   return new THREE.Matrix4().copy(parent).multiply(child)
 }
 
-export async function fileExists(filePath, assets, hint) {
-  const entries = Array.isArray(assets) ? assets : assets ? [assets] : [null]
-  const range = hint !== undefined ? [hint] : entries.map((e, i) => i)
-  for (const i of range) {
-    const entry = entries[i]
-    if (entry === null || entry === undefined) {
-      try {
-        await fs.promises.access(filePath)
-        return { path: filePath, hintIndex: i }
-      } catch {}
-    } else if (typeof entry === "string") {
-      try {
-        await fs.promises.access(path.join(entry, filePath))
-        return { path: filePath, hintIndex: i }
-      } catch {}
-    } else if (typeof entry === "object") {
-      if (entry.exists ? await entry.exists(filePath) : await entry.read(filePath).catch(() => null)) {
-        return { path: filePath, hintIndex: i }
-      }
-    }
-  }
-  return false
-}
-
 export async function listDirectory(dir, assets) {
   const out = new Set()
   const entries = Array.isArray(assets) ? assets : assets ? [assets] : [null]
@@ -1319,9 +1295,9 @@ async function resolveSpecialModel(assets, data, base) {
     modelPath = `~block/copper_golem_statue/_template_copper_golem_statue_${data.pose}`
   } else {
     const basePath = base ? "~" + resolveNamespace(base).item : null
-    if (basePath && await fileExists(`assets/minecraft/models/${basePath}.json`, assets)) {
+    if (basePath && await readFile(`assets/minecraft/models/${basePath}.json`, assets)) {
       modelPath = basePath
-    } else if (await fileExists(`assets/minecraft/models/~item/${data.type}.json`, assets)) {
+    } else if (await readFile(`assets/minecraft/models/~item/${data.type}.json`, assets)) {
       modelPath = `~item/${data.type}`
     } else {
       return
