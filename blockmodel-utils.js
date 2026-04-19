@@ -1163,10 +1163,9 @@ export async function resolveModelData(assets, model) {
       } else {
         const buf = await readFile(`assets/${currentNamespace}/models/${currentItem}.json`, assets)
 
-        const overridesPath = path.normalize(path.join(__dirname, "assets/overrides")) + path.sep
-        const filePath = path.normalize(buf.path)
-
-        if (filePath.startsWith(overridesPath)) {
+        const overridesPath = path.resolve(path.join(__dirname, "assets/overrides"))
+        const sourceEntry = assets[buf.hintIndex]
+        if (sourceEntry?.path && path.resolve(sourceEntry.path) === overridesPath) {
           merged.overridden = true
         }
 
@@ -1368,10 +1367,6 @@ async function resolveSpecialModel(assets, data, base) {
       break
     case "hanging_sign":
       model.textures = { sign: data.texture ? normalize(data.texture) : `entity/signs/hanging/${normalize(data.wood_type)}` }
-      rotation = [0, 180, 0]
-      break
-    case "bed":
-      model.textures = { bed: `entity/bed/${normalize(data.texture)}` }
       rotation = [0, 180, 0]
       break
     case "chest": {
