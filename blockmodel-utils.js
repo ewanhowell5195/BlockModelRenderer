@@ -1357,8 +1357,9 @@ async function resolveSpecialModel(assets, data, base) {
 
   switch (originalType) {
     case "banner":
-      translation = [-8, 0, 8]
+      translation = [-12, 0, 12]
       rotation = [0, 0, 180]
+      scale = [1.5, 1.5, 1.5]
       model.tints = [COLOURS.dye[data.color]]
       break
     case "standing_sign":
@@ -1401,6 +1402,18 @@ async function resolveSpecialModel(assets, data, base) {
     case "copper_golem_statue":
       translation = [0, 24, 0]
       model.textures = { golem: `${normalize(data.texture).slice(9).slice(0, -4)}` }
+      break
+    case "conduit":
+      translation = [-8, -8, -8]
+      rotation = [0, 180, 0]
+      break
+    case "head":
+    case "player_head":
+      translation = [-8, 0, 8]
+      rotation = [0, 0, 180]
+      break
+    case "decorated_pot":
+      rotation = [0, 180, 0]
       break
   }
   return {
