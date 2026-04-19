@@ -442,6 +442,7 @@ export async function renderModelScene(scene, camera, args) {
       height: baseHeight,
       path: finalPath,
       format: finalFormat,
+      output: args?.output,
       clearColor,
       clearAlpha,
       colorSpace: THREE.LinearSRGBColorSpace,
@@ -547,7 +548,7 @@ export async function renderModelScene(scene, camera, args) {
   let image = sharp(stacked, {
     raw: { width, height: height * frameCount, channels: 4, premultiplied: true, pages: frameCount, pageHeight: height },
   })
-  image = image[animFormat === "webp" ? "webp" : "gif"]({ loop: 0, delay })
+  image = image[animFormat === "webp" ? "webp" : "gif"]({ loop: 0, delay, ...args?.output })
   const buffer = await image.toBuffer()
   if (finalPath) await fs.promises.writeFile(finalPath, buffer)
   return { buffer, format: animFormat }

@@ -78,7 +78,8 @@ Renders a block by its id using the resource pack's blockstates and models.
 | `blockstates` | `{}` | Blockstate property values (e.g. `{ axis: "y", half: "top" }`) |
 | `display` | see below | Display transform applied to the rendered block. See [Display transforms](#display-transforms) |
 | `path` | | If provided, saves the output to this file path. Format inferred from the extension |
-| `format` | | Output format (`"png"`, `"jpeg"`, `"webp"`, etc.). Overrides extension inference |
+| `format` | | Output format (`"png"`, `"jpeg"`, `"webp"`, etc.). Overrides extension inference. See [sharp's output docs](https://sharp.pixelplumbing.com/api-output) for the full list of supported formats |
+| `output` | | Options passed directly to the sharp format encoder (e.g. `{ quality: 85, mozjpeg: true }` for JPEG). See [sharp's output docs](https://sharp.pixelplumbing.com/api-output) for all available options per format |
 | `width` | `256` | Width of the rendered output image, in pixels |
 | `height` | `256` | Height of the rendered output image, in pixels |
 | `animated` | `false` | See [Animated output](#animated-output) |
@@ -101,7 +102,7 @@ Renders an item by id using its item definition.
 | `assets` | `[]` | The assets source |
 | `components` | `{}` | Item components used by the item definition (e.g. `{ using_item: true }` on a `bow` to show it drawn) |
 | `display` | `{ type: "fallback", display: "gui" }` | Display transform. See [Display transforms](#display-transforms) |
-| `path`, `format`, `width`, `height`, `animated`, `animatedWidth`, `animatedHeight`, `background` | | Same as `renderBlock` |
+| `path`, `format`, `output`, `width`, `height`, `animated`, `animatedWidth`, `animatedHeight`, `background` | | Same as `renderBlock` |
 
 ### `renderModel(args)`
 
@@ -112,7 +113,7 @@ Renders a custom model JSON directly, bypassing blockstate or item definition lo
 | `model` | `{}` | A model JSON object (inherits from `parent` if specified, supports all vanilla model features) |
 | `assets` | `[]` | The assets source |
 | `display` | Same as `renderBlock` | Display transform. See [Display transforms](#display-transforms) |
-| `path`, `format`, `width`, `height`, `animated`, `animatedWidth`, `animatedHeight`, `background` | | Same as `renderBlock` |
+| `path`, `format`, `output`, `width`, `height`, `animated`, `animatedWidth`, `animatedHeight`, `background` | | Same as `renderBlock` |
 
 ### Return value
 
