@@ -79,8 +79,8 @@ Renders a block by its id using the resource pack's blockstates and models.
 | `display` | see below | Display transform applied to the rendered block. See [Display transforms](#display-transforms) |
 | `path` | | If provided, saves the output to this file path. Format inferred from the extension |
 | `format` | | Output format (`"png"`, `"jpeg"`, `"webp"`, etc.). Overrides extension inference |
-| `width` | `1024` | Width of the rendered output image, in pixels |
-| `height` | `1024` | Height of the rendered output image, in pixels |
+| `width` | `256` | Width of the rendered output image, in pixels |
+| `height` | `256` | Height of the rendered output image, in pixels |
 | `animated` | `false` | See [Animated output](#animated-output) |
 | `animatedWidth` | Inherits from `width` | Width of the rendered output image when the output is animated, in pixels |
 | `animatedHeight` | Inherits from `height` | Height of the rendered output image when the output is animated, in pixels |

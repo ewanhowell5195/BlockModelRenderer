@@ -411,8 +411,8 @@ export function makeModelScene() {
 }
 
 export async function renderModelScene(scene, camera, args) {
-  const baseWidth = args?.width ?? 1024
-  const baseHeight = args?.height ?? 1024
+  const baseWidth = args?.width ?? 256
+  const baseHeight = args?.height ?? 256
   const { clearColor, clearAlpha } = parseBackground(args?.background)
 
   const animatedTextures = []
