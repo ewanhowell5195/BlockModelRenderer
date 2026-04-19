@@ -597,7 +597,7 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
   fire: {
     up: false
   },
-  "*_stairs|*_glazed_terracotta|cocoa": {
+  "*_stairs|*_glazed_terracotta|cocoa|repeater|comparator": {
     facing: "south"
   },
   "*_amethyst_bud|amethyst_cluster|barrel|end_rod|*lightning_rod|*piston*|*shulker_box": {
