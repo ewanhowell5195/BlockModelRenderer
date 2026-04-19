@@ -12,6 +12,12 @@ const { THREE, loadTexture, render } = (await getTHREE({ Canvas, Image, ImageDat
 
 const missing = await loadImage(`${__dirname}/assets/fallbacks/assets/minecraft/textures/~missing.png`)
 
+const OUTPUT_DEFAULTS = {
+  jpeg: { mozjpeg: true },
+  jpg: { mozjpeg: true },
+  webp: { lossless: true }
+}
+
 const AXIS_VECTORS = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) }
 const UV_CENTER = new THREE.Vector2(8, 8)
 const X_CYCLE = { north: "up", up: "south", south: "down", down: "north" }
@@ -442,7 +448,7 @@ export async function renderModelScene(scene, camera, args) {
       height: baseHeight,
       path: finalPath,
       format: finalFormat,
-      output: args?.output,
+      output: args?.output ?? OUTPUT_DEFAULTS[finalFormat],
       clearColor,
       clearAlpha,
       colorSpace: THREE.LinearSRGBColorSpace,
@@ -548,7 +554,7 @@ export async function renderModelScene(scene, camera, args) {
   let image = sharp(stacked, {
     raw: { width, height: height * frameCount, channels: 4, premultiplied: true, pages: frameCount, pageHeight: height },
   })
-  image = image[animFormat === "webp" ? "webp" : "gif"]({ loop: 0, delay, ...args?.output })
+  image = image[animFormat === "webp" ? "webp" : "gif"]({ loop: 0, delay, ...(args?.animatedOutput ?? OUTPUT_DEFAULTS[animFormat]) })
   const buffer = await image.toBuffer()
   if (finalPath) await fs.promises.writeFile(finalPath, buffer)
   return { buffer, format: animFormat }

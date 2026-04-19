@@ -85,6 +85,7 @@ Renders a block by its id using the resource pack's blockstates and models.
 | `animated` | `false` | See [Animated output](#animated-output) |
 | `animatedWidth` | Inherits from `width` | Width of the rendered output image when the output is animated, in pixels |
 | `animatedHeight` | Inherits from `height` | Height of the rendered output image when the output is animated, in pixels |
+| `animatedOutput` | | Options passed directly to the sharp encoder when the output is animated |
 | `background` | transparent | See [Background](#background) |
 
 Default display:
@@ -102,7 +103,7 @@ Renders an item by id using its item definition.
 | `assets` | `[]` | The assets source |
 | `components` | `{}` | Item components used by the item definition (e.g. `{ using_item: true }` on a `bow` to show it drawn) |
 | `display` | `{ type: "fallback", display: "gui" }` | Display transform. See [Display transforms](#display-transforms) |
-| `path`, `format`, `output`, `width`, `height`, `animated`, `animatedWidth`, `animatedHeight`, `background` | | Same as `renderBlock` |
+| `path`, `format`, `output`, `width`, `height`, `animated`, `animatedWidth`, `animatedHeight`, `animatedOutput`, `background` | | Same as `renderBlock` |
 
 ### `renderModel(args)`
 
@@ -113,7 +114,7 @@ Renders a custom model JSON directly, bypassing blockstate or item definition lo
 | `model` | `{}` | A model JSON object (inherits from `parent` if specified, supports all vanilla model features) |
 | `assets` | `[]` | The assets source |
 | `display` | Same as `renderBlock` | Display transform. See [Display transforms](#display-transforms) |
-| `path`, `format`, `output`, `width`, `height`, `animated`, `animatedWidth`, `animatedHeight`, `background` | | Same as `renderBlock` |
+| `path`, `format`, `output`, `width`, `height`, `animated`, `animatedWidth`, `animatedHeight`, `animatedOutput`, `background` | | Same as `renderBlock` |
 
 ### Return value
 
