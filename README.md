@@ -422,7 +422,8 @@ In a few places the renderer accepts fields that aren't part of vanilla Minecraf
 |---|---|---|
 | `x`, `y`, `z` | `90` | Rotation angles (in degrees) applied to the whole model around each axis. Normally set by a blockstate variant, but can be set on a model directly too |
 | `uvlock` | `true` | Keep face UVs aligned to world space when the model is rotated by `x`/`y`/`z`. Normally set by a blockstate variant |
-| `offset` | `[8, 0, 8]` | `[x, y, z]` translation applied to the whole model before rendering |
+| `translation` | `[8, 0, 8]` | `[x, y, z]` translation (in voxel units) applied to the whole model before rendering |
+| `scale` | `[0.5, 0.5, 0.5]` | `[x, y, z]` scale applied to the whole model before rendering |
 | `transformation` | `{ translation: [0,0,0], scale: [1,1,1], left_rotation: [0,0,0,1], right_rotation: [0,0,0,1] }` | Translation, rotation, and scale applied to the whole model before rendering. Accepts the vanilla item-definition transformation form (translation/rotations/scale) or a flat 16-element matrix array. |
 | `ignore_rotations` | `true` | Skip the display rotation for this model |
 | `double_sided` | `true` | Render all faces from both sides |

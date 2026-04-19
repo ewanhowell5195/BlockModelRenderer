@@ -1195,8 +1195,11 @@ export async function resolveModelData(assets, model) {
         merged.y = resolved.rotation[1]
         merged.z = resolved.rotation[2]
       }
-      if (resolved.offset) {
-        merged.offset = resolved.offset
+      if (resolved.translation) {
+        merged.translation = resolved.translation
+      }
+      if (resolved.scale) {
+        merged.scale = resolved.scale
       }
     }
     delete merged.special
@@ -1350,13 +1353,13 @@ async function resolveSpecialModel(assets, data, base) {
   }
 
   const model = await resolveModelData(assets, modelPath)
-  let offset, rotation
+  let translation, rotation, scale
 
   switch (originalType) {
     case "banner":
-      model.tints = [COLOURS.dye[data.color]]
+      translation = [-8, 0, 8]
       rotation = [0, 0, 180]
-      offset = [-8, 0, 8]
+      model.tints = [COLOURS.dye[data.color]]
       break
     case "standing_sign":
       model.textures = { sign: data.texture ? normalize(data.texture) : `entity/signs/${normalize(data.wood_type)}` }
@@ -1378,8 +1381,8 @@ async function resolveSpecialModel(assets, data, base) {
       break
     }
     case "shulker_box":
+      translation = [-8, 24, 8]
       rotation = [0, 0, 180]
-      offset = [-8, 24, 8]
       model.textures = { shulker_box: `entity/shulker/${normalize(data.texture)}` }
       if (data.openness) {
         const lift = data.openness * 8
@@ -1396,14 +1399,15 @@ async function resolveSpecialModel(assets, data, base) {
       model.shader = { type: "end_portal", layers: data.effect === "gateway" ? 16 : 15 }
       break
     case "copper_golem_statue":
+      translation = [0, 24, 0]
       model.textures = { golem: `${normalize(data.texture).slice(9).slice(0, -4)}` }
-      offset = [0, 24, 0]
       break
   }
   return {
     model,
-    offset,
-    rotation
+    translation,
+    rotation,
+    scale
   }
 }
 
@@ -1502,8 +1506,12 @@ export async function loadModel(scene, assets, model, args) {
     containerGroup.rotation.set(x, y, z, "ZYX")
   }
 
-  if (model.offset) {
-    containerGroup.position.set(...model.offset)
+  if (model.translation) {
+    containerGroup.position.set(...model.translation)
+  }
+
+  if (model.scale) {
+    containerGroup.scale.set(...model.scale)
   }
 
   for (const element of model.elements || []) {
