@@ -967,6 +967,14 @@ async function resolveItemModel(assets, def, data, display, accTransform) {
       let raw
       if (prop === "custom_model_data") raw = data["custom_model_data"]?.strings?.[def.index ?? 0]
       else if (prop === "component") raw = data[normalize(def.component)]
+      else if (prop === "block_state") raw = data.block_state?.[def.block_state_property]
+      else if (prop === "charge") {
+        const projectiles = data.charged_projectiles ?? []
+        if (!projectiles.length) raw = "none"
+        else if (projectiles.some(p => normalize(typeof p === "string" ? p : p?.id ?? "") === "firework_rocket")) raw = "rocket"
+        else raw = "arrow"
+      }
+      else if (prop === "trim_material") raw = data.trim?.material ?? data.trim_material
       else raw = data[prop]
       let value = normalize(raw ?? "")
       if (!value && prop === "display_context") {
