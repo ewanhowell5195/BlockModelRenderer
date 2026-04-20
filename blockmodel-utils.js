@@ -168,7 +168,8 @@ function parseTransformation(t) {
   const [tx, ty, tz] = t.translation || [0, 0, 0]
   const T = new THREE.Matrix4().makeTranslation(tx * 16, ty * 16, tz * 16)
   const L = new THREE.Matrix4().makeRotationFromQuaternion(new THREE.Quaternion(...(t.left_rotation || [0, 0, 0, 1])))
-  const S = new THREE.Matrix4().makeScale(...(t.scale || [1, 1, 1]))
+  const rawScale = t.scale || [1, 1, 1]
+  const S = new THREE.Matrix4().makeScale(...rawScale.map(s => s === 0 ? 0.001 : s))
   const R = new THREE.Matrix4().makeRotationFromQuaternion(new THREE.Quaternion(...(t.right_rotation || [0, 0, 0, 1])))
   mat.multiply(T).multiply(L).multiply(S).multiply(R)
   return mat
@@ -607,7 +608,8 @@ const DEFAULT_BLOCKSTATES = {
   powered: false,
   segment_amount: 4,
   flower_amount: 4,
-  rotation: 8
+  rotation: 8,
+  lit: false
 }
 
 const UNIQUE_DEFAULT_BLOCKSTATES = {
@@ -1424,7 +1426,7 @@ async function resolveSpecialModel(assets, data, base) {
 
   switch (originalType) {
     case "banner":
-      translation = [-12, 0, 12]
+      translation = [-8, -20, -8]
       rotation = [0, 0, 180]
       scale = [1.5, 1.5, 1.5]
       model.tints = [COLOURS.dye[data.color]]
@@ -1449,7 +1451,7 @@ async function resolveSpecialModel(assets, data, base) {
       break
     }
     case "shulker_box":
-      translation = [-8, 24, 8]
+      translation = [-8, 8, -8]
       rotation = [0, 0, 180]
       model.textures = { shulker_box: `entity/shulker/${normalize(data.texture)}` }
       if (data.openness) {
@@ -1467,7 +1469,7 @@ async function resolveSpecialModel(assets, data, base) {
       model.shader = { type: "end_portal", layers: data.effect === "gateway" ? 16 : 15 }
       break
     case "copper_golem_statue":
-      translation = [0, 24, 0]
+      translation = [0, 8, -16]
       model.textures = { golem: `${normalize(data.texture).slice(9).slice(0, -4)}` }
       break
     case "conduit":
@@ -1476,7 +1478,7 @@ async function resolveSpecialModel(assets, data, base) {
       break
     case "head":
     case "player_head":
-      translation = [-8, 0, 8]
+      translation = [-8, -16, -8]
       rotation = [0, 0, 180]
       break
     case "decorated_pot":
@@ -1797,7 +1799,13 @@ export async function loadModel(scene, assets, model, args) {
     const mat = model.transformation instanceof THREE.Matrix4
       ? model.transformation
       : parseTransformation(model.transformation)
-    if (mat) containerGroup.applyMatrix4(mat)
+    if (mat) {
+      const wrapped = new THREE.Matrix4()
+        .makeTranslation(-8, -8, -8)
+        .multiply(mat)
+        .multiply(new THREE.Matrix4().makeTranslation(8, 8, 8))
+      containerGroup.applyMatrix4(wrapped)
+    }
   }
 
   scene.add(rootGroup)

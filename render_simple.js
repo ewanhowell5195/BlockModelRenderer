@@ -1,7 +1,9 @@
 import { renderBlock, renderItem, renderModel, prepareAssets } from "./blockmodel-utils.js"
 import fs from "node:fs"
 
-const assets = await prepareAssets("C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/26.2-snapshot-3")
+const assets = await prepareAssets([
+  "C:/Users/ewanh/AppData/Roaming/.minecraft/resourcepacks/26.2-snapshot-3"
+])
 
 fs.mkdirSync("renders/simple", { recursive: true })
 
