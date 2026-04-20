@@ -572,6 +572,7 @@ export async function renderBlock(args = {}) {
   const models = await parseBlockstate(args.assets, args.id, { data: args.blockstates })
 
   for (const model of models) {
+    model.type = "block"
     const resolved = await resolveModelData(args.assets, model)
     await loadModel(scene, args.assets, resolved, { display: args.display })
   }
@@ -594,6 +595,7 @@ export async function renderItem(args = {}) {
   const models = await parseItemDefinition(args.assets, args.id, { data: args.components, display: args.display })
 
   for (const model of models) {
+    model.type = "item"
     const resolved = await resolveModelData(args.assets, model)
     await loadModel(scene, args.assets, resolved, { display: args.display })
   }
@@ -1330,7 +1332,7 @@ async function resolveItemModel(assets, def, data, display, accTransform) {
   return []
 }
 
-async function loadMinecraftTexture(path, assets) {
+async function loadMinecraftTexture(path, assets, type) {
   const buf = await readFile(path, assets)
   if (!buf) return { image: missing }
 
@@ -1768,7 +1770,7 @@ export async function loadModel(scene, assets, model, args) {
     let loaded
     if (id) {
       const path = resolveTexturePath(id)
-      loaded = await loadMinecraftTexture(path, assets)
+      loaded = await loadMinecraftTexture(path, assets, model.type)
     } else {
       loaded = { image: missing }
     }
