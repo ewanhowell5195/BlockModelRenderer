@@ -1,0 +1,22 @@
+{
+  "sources": [
+    {
+      "type": "directory",
+      "prefix": "block/",
+      "source": "block"
+    },
+    {
+      "type": "directory",
+      "prefix": "entity/conduit/",
+      "source": "entity/conduit"
+    },
+    {
+      "type": "single",
+      "resource": "entity/bell/bell_body"
+    },
+    {
+      "type": "single",
+      "resource": "entity/enchantment/enchanting_table_book"
+    }
+  ]
+}

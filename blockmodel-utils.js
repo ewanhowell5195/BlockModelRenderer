@@ -188,8 +188,8 @@ async function loadFolderFilter(folder) {
     const parsed = JSON.parse(data)
     const patterns = parsed?.filter?.block ?? []
     return patterns.map(p => ({
-      namespaceRegex: p.namespace ? new RegExp(`^(?:${p.namespace})$`) : null,
-      pathRegex: p.path ? new RegExp(`^(?:${p.path})$`) : null
+      namespaceRegex: p.namespace ? new RegExp(p.namespace) : null,
+      pathRegex: p.path ? new RegExp(p.path) : null
     }))
   } catch {
     return []
@@ -248,7 +248,237 @@ export async function prepareAssets(assets) {
     return entry
   }))
   prepared.prepared = true
+  await loadAtlases(prepared)
   return prepared
+}
+
+async function loadPackAtlasSources(entry) {
+  const out = []
+  if (entry.path) {
+    let namespaces = []
+    try { namespaces = await fs.promises.readdir(path.join(entry.path, "assets")) } catch {}
+    for (const ns of namespaces) {
+      for (const name of ["blocks.json", "items.json"]) {
+        try {
+          const data = await fs.promises.readFile(path.join(entry.path, "assets", ns, "atlases", name), "utf8")
+          const parsed = JSON.parse(data)
+          if (Array.isArray(parsed?.sources)) out.push(...parsed.sources)
+        } catch {}
+      }
+    }
+  } else if (entry.read) {
+    for (const name of ["blocks.json", "items.json"]) {
+      try {
+        const data = await entry.read(`assets/minecraft/atlases/${name}`)
+        if (!data) continue
+        const parsed = JSON.parse(Buffer.isBuffer(data) ? data.toString("utf8") : data)
+        if (Array.isArray(parsed?.sources)) out.push(...parsed.sources)
+      } catch {}
+    }
+  }
+  return out
+}
+
+async function loadAtlases(assets) {
+  for (let i = 0; i < assets.length; i++) {
+    const entry = assets[i]
+    const sources = await loadPackAtlasSources(entry)
+    const sprites = new Map()
+    const filters = []
+    for (const src of sources) {
+      const type = normalize(src.type ?? "")
+      if (type === "unstitch") applyUnstitchSource(src, sprites, assets)
+      else if (type === "paletted_permutations") applyPalettedPermutationsSource(src, sprites, assets)
+      else if (type === "filter") applyFilterSource(src, sprites, filters)
+      else if (type === "directory") applyDirectorySource(src, sprites, entry)
+      else if (type === "single") applySingleSource(src, sprites, entry)
+    }
+    entry.virtualSprites = sprites
+    entry.spriteFilters = filters
+  }
+}
+
+function matchesAnyFilter(filters, file) {
+  if (!filters || !filters.length) return false
+  const m = file.match(/^assets\/([^/]+)\/textures\/(.+)\.png$/)
+  if (!m) return false
+  const [, ns, p] = m
+  for (const { nsRe, pathRe } of filters) {
+    if ((!nsRe || nsRe.test(ns)) && (!pathRe || pathRe.test(p))) return true
+  }
+  return false
+}
+
+function setVirtual(sprites, filePath, fn) {
+  sprites.set(filePath, fn)
+}
+
+function layerDisk(sprites, filePath, fn) {
+  const prev = sprites.get(filePath)
+  sprites.set(filePath, prev ? memoizeAsync(async () => (await fn()) ?? (await prev())) : fn)
+}
+
+function makeEntryReader(entry, diskPath) {
+  return memoizeAsync(async () => {
+    if (entry.path) {
+      try { return await fs.promises.readFile(path.join(entry.path, diskPath)) } catch { return null }
+    }
+    if (entry.read) {
+      try {
+        const data = await entry.read(diskPath)
+        if (data === undefined || data === null || data === false) return null
+        return Buffer.isBuffer(data) ? data : Buffer.from(data)
+      } catch { return null }
+    }
+    return null
+  })
+}
+
+function memoizeAsync(fn) {
+  let promise
+  return () => (promise ??= Promise.resolve().then(fn))
+}
+
+function spritePathOf(id) {
+  const { namespace, item } = resolveNamespace(normalize(id))
+  return `assets/${namespace}/textures/${item}.png`
+}
+
+async function getMissingTexturePng(assets) {
+  return await readFile("assets/minecraft/textures/~missing.png", assets)
+}
+
+function applyUnstitchSource(src, sprites, assets) {
+  if (!src.resource || !Array.isArray(src.regions)) return
+  const divisorX = src.divisor_x ?? 1
+  const divisorY = src.divisor_y ?? 1
+  const srcPath = spritePathOf(src.resource)
+  for (const region of src.regions) {
+    if (!region?.sprite) continue
+    const outPath = spritePathOf(region.sprite)
+    const generator = memoizeAsync(async () => {
+      const srcBuf = await readFile(srcPath, assets)
+      if (!srcBuf) return await getMissingTexturePng(assets)
+      try {
+        const meta = await sharp(srcBuf).metadata()
+        const xScale = meta.width / divisorX
+        const yScale = meta.height / divisorY
+        const left = Math.floor(region.x * xScale)
+        const top = Math.floor(region.y * yScale)
+        const width = Math.floor(region.width * xScale)
+        const height = Math.floor(region.height * yScale)
+        return await sharp(srcBuf).extract({ left, top, width, height }).png().toBuffer()
+      } catch {
+        return await getMissingTexturePng(assets)
+      }
+    })
+    setVirtual(sprites, outPath, generator)
+  }
+}
+
+function applyPalettedPermutationsSource(src, sprites, assets) {
+  if (!src.palette_key) return
+  const separator = src.separator ?? "_"
+  const keyPath = spritePathOf(src.palette_key)
+  const textures = src.textures ?? []
+  const permutations = src.permutations ?? {}
+
+  for (const tex of textures) {
+    const basePath = spritePathOf(tex)
+    const { namespace: texNs, item: texItem } = resolveNamespace(normalize(tex))
+    for (const [suffix, palId] of Object.entries(permutations)) {
+      const palPath = spritePathOf(palId)
+      const outPath = `assets/${texNs}/textures/${texItem}${separator}${suffix}.png`
+      const generator = memoizeAsync(async () => {
+        const [baseBuf, keyBuf, palBuf] = await Promise.all([
+          readFile(basePath, assets),
+          readFile(keyPath, assets),
+          readFile(palPath, assets)
+        ])
+        if (!baseBuf || !keyBuf || !palBuf) return await getMissingTexturePng(assets)
+        try {
+          const key = await sharp(keyBuf).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+          const pal = await sharp(palBuf).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+          const base = await sharp(baseBuf).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+
+          const keyCount = key.info.width * key.info.height
+          const palCount = pal.info.width * pal.info.height
+          if (keyCount !== palCount) return await getMissingTexturePng(assets)
+
+          const map = new Map()
+          for (let p = 0; p < keyCount; p++) {
+            const ka = key.data[p * 4 + 3]
+            if (ka === 0) continue
+            const rgb = (key.data[p * 4] << 16) | (key.data[p * 4 + 1] << 8) | key.data[p * 4 + 2]
+            map.set(rgb, {
+              r: pal.data[p * 4],
+              g: pal.data[p * 4 + 1],
+              b: pal.data[p * 4 + 2],
+              a: pal.data[p * 4 + 3]
+            })
+          }
+
+          const out = Buffer.from(base.data)
+          const px = base.info.width * base.info.height
+          for (let p = 0; p < px; p++) {
+            const a = out[p * 4 + 3]
+            if (a === 0) continue
+            const rgb = (out[p * 4] << 16) | (out[p * 4 + 1] << 8) | out[p * 4 + 2]
+            const rep = map.get(rgb)
+            if (rep) {
+              out[p * 4] = rep.r
+              out[p * 4 + 1] = rep.g
+              out[p * 4 + 2] = rep.b
+              out[p * 4 + 3] = Math.floor((a * rep.a) / 255)
+            }
+          }
+
+          return await sharp(out, { raw: { width: base.info.width, height: base.info.height, channels: 4 } }).png().toBuffer()
+        } catch {
+          return await getMissingTexturePng(assets)
+        }
+      })
+      setVirtual(sprites, outPath, generator)
+    }
+  }
+}
+
+function applyDirectorySource(src, sprites, entry) {
+  const source = (src.source ?? "").replace(/\/$/, "")
+  const prefix = src.prefix ?? ""
+  for (const filePath of [...sprites.keys()]) {
+    const m = filePath.match(/^assets\/([^/]+)\/textures\/(.+)\.png$/)
+    if (!m) continue
+    const [, ns, spriteId] = m
+    if (!spriteId.startsWith(prefix)) continue
+    const rel = spriteId.slice(prefix.length)
+    const diskPath = `assets/${ns}/textures/${source ? source + "/" : ""}${rel}.png`
+    layerDisk(sprites, filePath, makeEntryReader(entry, diskPath))
+  }
+}
+
+function applySingleSource(src, sprites, entry) {
+  const resource = normalize(src.resource ?? "")
+  if (!resource) return
+  const spriteRef = normalize(src.sprite ?? src.resource)
+  const outPath = spritePathOf(spriteRef)
+  const diskPath = spritePathOf(resource)
+  layerDisk(sprites, outPath, makeEntryReader(entry, diskPath))
+}
+
+function applyFilterSource(src, sprites, filters) {
+  const pattern = src.pattern ?? {}
+  const nsRe = pattern.namespace ? new RegExp(pattern.namespace) : null
+  const pathRe = pattern.path ? new RegExp(pattern.path) : null
+  filters.push({ nsRe, pathRe })
+  for (const filePath of [...sprites.keys()]) {
+    const m = filePath.match(/^assets\/([^/]+)\/textures\/(.+)\.png$/)
+    if (!m) continue
+    const [, ns, p] = m
+    if ((!nsRe || nsRe.test(ns)) && (!pathRe || pathRe.test(p))) {
+      sprites.delete(filePath)
+    }
+  }
 }
 
 export async function listDirectory(dir, assets) {
@@ -266,6 +496,16 @@ export async function listDirectory(dir, assets) {
       if (await isFilteredByHigher(assets, i, `${dir}/${f}`)) continue
       out.add(f)
     }
+    if (entry.virtualSprites) {
+      const prefix = `${dir}/`
+      for (const filePath of entry.virtualSprites.keys()) {
+        if (!filePath.startsWith(prefix)) continue
+        const rest = filePath.slice(prefix.length)
+        if (rest.includes("/")) continue
+        if (await isFilteredByHigher(assets, i, filePath)) continue
+        out.add(rest)
+      }
+    }
   }
   return Array.from(out)
 }
@@ -276,6 +516,24 @@ export async function readFile(file, assets, hint) {
   for (const i of range) {
     const entry = assets[i]
     if (await isFilteredByHigher(assets, i, file)) continue
+
+    let filtered = false
+    for (let j = 0; j <= i; j++) {
+      if (matchesAnyFilter(assets[j].spriteFilters, file)) { filtered = true; break }
+    }
+    if (filtered) continue
+
+    const resolver = entry.virtualSprites?.get(file)
+    if (resolver) {
+      const data = await resolver()
+      if (data) {
+        const buf = Buffer.isBuffer(data) ? data : Buffer.from(data)
+        buf.path = file
+        buf.hintIndex = i
+        return buf
+      }
+    }
+
     if (entry.path) {
       try {
         const buf = await fs.promises.readFile(path.join(entry.path, file))
@@ -286,11 +544,12 @@ export async function readFile(file, assets, hint) {
     } else if (entry.read) {
       try {
         const data = await entry.read(file)
-        if (data === undefined || data === null || data === false) continue
-        const buf = Buffer.isBuffer(data) ? data : Buffer.from(data)
-        buf.path = file
-        buf.hintIndex = i
-        return buf
+        if (data !== undefined && data !== null && data !== false) {
+          const buf = Buffer.isBuffer(data) ? data : Buffer.from(data)
+          buf.path = file
+          buf.hintIndex = i
+          return buf
+        }
       } catch {}
     }
   }
