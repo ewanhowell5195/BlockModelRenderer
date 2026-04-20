@@ -551,10 +551,28 @@ export async function renderModelScene(scene, camera, args) {
   renderer.dispose()
   glCtx.getExtension("STACKGL_destroy_context")?.destroy()
 
-  let image = sharp(stacked, {
-    raw: { width, height: height * frameCount, channels: 4, premultiplied: true, pages: frameCount, pageHeight: height },
+  const MAX_DELAY = 65535
+  const frameSize = width * height * 4
+  const splitChunks = []
+  const splitDelay = []
+  for (let f = 0; f < frameCount; f++) {
+    const slice = stacked.subarray(f * frameSize, (f + 1) * frameSize)
+    let remaining = delay[f]
+    while (remaining > MAX_DELAY) {
+      splitChunks.push(slice)
+      splitDelay.push(MAX_DELAY)
+      remaining -= MAX_DELAY
+    }
+    splitChunks.push(slice)
+    splitDelay.push(remaining)
+  }
+  const finalBuf = splitChunks.length === frameCount ? stacked : Buffer.concat(splitChunks)
+  const finalFrameCount = splitDelay.length
+
+  let image = sharp(finalBuf, {
+    raw: { width, height: height * finalFrameCount, channels: 4, premultiplied: true, pages: finalFrameCount, pageHeight: height },
   })
-  image = image[animFormat === "webp" ? "webp" : "gif"]({ loop: 0, delay, ...(args?.animatedOutput ?? OUTPUT_DEFAULTS[animFormat]) })
+  image = image[animFormat === "webp" ? "webp" : "gif"]({ loop: 0, delay: splitDelay, ...(args?.animatedOutput ?? OUTPUT_DEFAULTS[animFormat]) })
   const buffer = await image.toBuffer()
   if (finalPath) await fs.promises.writeFile(finalPath, buffer)
   return { buffer, format: animFormat }
