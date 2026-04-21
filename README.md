@@ -1,6 +1,6 @@
 # block-model-renderer
 
-Minecraft block and item rendering for Node.js.
+Minecraft block and item model rendering for Node.js.
 Render any block, item, or custom model JSON to an image, with full support for vanilla resource pack features.
 
 [![npm version](https://badge.fury.io/js/block-model-renderer.svg)](https://www.npmjs.com/package/block-model-renderer)
