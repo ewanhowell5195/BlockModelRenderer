@@ -1,7 +1,35 @@
 {
+  "name": "block-model-renderer",
+  "version": "1.0.0",
+  "description": "Minecraft block and item model rendering for Node.js",
+  "author": "Ewan Howell <ewanhowell5195>",
+  "license": "MIT",
   "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "assets/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ewanhowell5195/BlockModelRenderer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ewanhowell5195/BlockModelRenderer/issues"
+  },
+  "keywords": [
+    "minecraft",
+    "render",
+    "block",
+    "item",
+    "model",
+    "resource-pack"
+  ],
   "dependencies": {
-    "headless-three": "^1.4.0",
+    "headless-three": "^1.4.1",
     "sharp": "^0.34.5",
     "skia-canvas": "^3.0.8"
   }
