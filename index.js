@@ -10,7 +10,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const { THREE, loadTexture, render } = (await getTHREE({ Canvas, Image, ImageData }))
 
-const missing = await loadImage(`${__dirname}/assets/fallbacks/assets/minecraft/textures/~missing.png`)
+async function getMissingImage(assets) {
+  if (assets.__missingImage) return assets.__missingImage
+  return assets.__missingImage = (async () => {
+    const buf = await readFile("assets/minecraft/textures/~missing.png", assets)
+    return loadImage(buf)
+  })()
+}
 
 const OUTPUT_DEFAULTS = {
   jpeg: { mozjpeg: true },
@@ -1464,11 +1470,11 @@ async function loadMinecraftTexture(path, assets, type) {
   if (type === "block" || type === "item") {
     const atlases = await getAtlasesContaining(path, assets)
     const allowed = type === "block" ? ["blocks"] : ["blocks", "items"]
-    if (!allowed.some(a => atlases.has(a))) return { image: missing }
+    if (!allowed.some(a => atlases.has(a))) return { image: await getMissingImage(assets) }
   }
 
   const buf = await readFile(path, assets)
-  if (!buf) return { image: missing }
+  if (!buf) return { image: await getMissingImage(assets) }
 
   const image = await loadImage(buf)
 
@@ -1943,7 +1949,7 @@ export async function loadModel(scene, assets, model, args) {
       const path = resolveTexturePath(id)
       loaded = await loadMinecraftTexture(path, assets, model.ignore_atlas_restrictions ? undefined : model.type)
     } else {
-      loaded = { image: missing }
+      loaded = { image: await getMissingImage(assets) }
     }
 
     let image = loaded.image
