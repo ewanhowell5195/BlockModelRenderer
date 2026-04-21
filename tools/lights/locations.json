@@ -1,0 +1,29 @@
+{
+  "sphere": {
+    "middle":            [500, 700],
+    "up1":               [500, 580],
+    "up2":               [500, 480],
+    "up3":               [500, 400],
+    "down1":             [500, 820],
+    "down2":             [500, 920],
+    "down3":             [500, 1000],
+    "left1":             [400, 700],
+    "left2":             [300, 700],
+    "left3":             [220, 700],
+    "right1":            [640, 700],
+    "right2":            [740, 700],
+    "right3":            [800, 700],
+    "upleftdiagonal":    [340, 480],
+    "uprightdiagonal":   [680, 480],
+    "downleftdiagonal":  [340, 900],
+    "downrightdiagonal": [680, 900]
+  },
+  "cube": {
+    "front": [512, 512]
+  },
+  "cube_display": {
+    "top":   [512, 256],
+    "left":  [300, 600],
+    "right": [700, 600]
+  }
+}

@@ -1,11 +1,24 @@
 import getTHREE from "headless-three"
 import { Canvas, Image, ImageData } from "skia-canvas"
 import fs from "node:fs"
+import sharp from "sharp"
+import locations from "./locations.json" with { type: "json" }
 
 const { THREE } = await getTHREE({ Canvas, Image, ImageData })
 
 const AXIS_VECTORS = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) }
-const modelsDir = "pack/assets/minecraft/models/item"
+const modelsDir = `${import.meta.dirname}/pack/assets/minecraft/models/item`
+
+async function loadGray(filePath) {
+  const img = sharp(filePath)
+  const { width, channels } = await img.metadata()
+  const data = await img.raw().toBuffer()
+  return { data, width, channels }
+}
+
+function sampleAt(img, [x, y]) {
+  return img.data[(y * img.width + x) * img.channels]
+}
 
 const geoNormals = {
   east: [1, 0, 0], west: [-1, 0, 0], up: [0, 1, 0], down: [0, -1, 0],
@@ -53,45 +66,35 @@ function getShaderNormal(faceName, elementRotation, displayRot) {
   return [n.x, n.y, n.z]
 }
 
+const realDir = `${import.meta.dirname}/real`
+
 const tests = [
   {
     name: "sphere",
     model: "light_test_base",
-    faces: {
-      middle:             { s: 131, f: 255 },
-      up1:                { s: 185, f: 255 },
-      up2:                { s: 229, f: 255 },
-      up3:                { s: 255, f: 255 },
-      down1:              { s: 102, f: 227 },
-      down2:              { s: 102, f: 186 },
-      down3:              { s: 102, f: 133 },
-      left1:              { s: 154, f: 255 },
-      left2:              { s: 207, f: 255 },
-      left3:              { s: 245, f: 225 },
-      right1:             { s: 123, f: 226 },
-      right2:             { s: 111, f: 181 },
-      right3:             { s: 102, f: 126 },
-      upleftdiagonal:     { s: 255, f: 255 },
-      uprightdiagonal:    { s: 213, f: 255 },
-      downleftdiagonal:   { s: 126, f: 173 },
-      downrightdiagonal:  { s: 102, f: 140 },
-    }
+    side: `${realDir}/side.png`,
+    front: `${realDir}/front.png`,
+    faces: Object.fromEntries(Object.keys(locations.sphere).map(n => [n, {}]))
   },
   {
     name: "cube",
     model: "light_test_base_cube",
+    side: `${realDir}/cube_side.png`,
+    front: `${realDir}/cube_front.png`,
     faces: {
-      front: { face: "south", s: 131, f: 255 },
+      front: { face: "south" },
     }
   },
   {
     name: "cube_display",
     model: "light_test_base_cube_display",
     display: [30, -135, 0],
+    side: `${realDir}/cube_display_side.png`,
+    front: `${realDir}/cube_display_front.png`,
     faces: {
-      top:   { face: "up",    s: 255, f: 255 },
-      left:  { face: "east",  s: 165, f: 206 },
-      right: { face: "north", s: 102, f: 158 },
+      top:   { face: "up" },
+      left:  { face: "east" },
+      right: { face: "north" },
     }
   },
 ]
@@ -100,10 +103,15 @@ const data = []
 
 for (const test of tests) {
   const modelJson = JSON.parse(fs.readFileSync(modelsDir + "/" + test.model + ".json", "utf8"))
+  const sideImg = await loadGray(test.side)
+  const frontImg = await loadGray(test.front)
+  const locs = locations[test.name]
 
   for (const [name, info] of Object.entries(test.faces)) {
-    let normal
+    const coord = locs?.[name]
+    if (!coord) { console.warn("No location:", test.name, name); continue }
 
+    let normal
     if (info.face) {
       normal = getShaderNormal(info.face, null, test.display)
     } else {
@@ -113,7 +121,12 @@ for (const test of tests) {
       normal = getShaderNormal(faceName, el.rotation, test.display)
     }
 
-    data.push({ name: test.name + "/" + name, n: normal, s: info.s, f: info.f })
+    data.push({
+      name: test.name + "/" + name,
+      n: normal,
+      s: sampleAt(sideImg, coord),
+      f: sampleAt(frontImg, coord),
+    })
   }
 }
 
