@@ -341,6 +341,8 @@ Creates a fresh three.js scene and orthographic camera configured for block rend
 
 Returns `{ scene, camera }`.
 
+The returned camera has a `fitAspect = true` flag that tells `renderModelScene` to adjust the camera's frustum to match the output aspect ratio (so non-square renders aren't squished). Set the same property on your own camera (`camera.fitAspect = true`) if you want the same behavior. Works for both `OrthographicCamera` and `PerspectiveCamera`. Without the flag, the camera is left exactly as you configured it.
+
 ### `loadModel(scene, assets, model, args?)`
 
 Adds a resolved model's geometry and materials to an existing scene.

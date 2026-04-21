@@ -761,14 +761,31 @@ export function makeModelScene() {
   const camera = new THREE.OrthographicCamera(-8, 8, 8, -8, 0.01, 100)
   camera.position.set(0, 0, 30)
   camera.lookAt(0, 0, 0)
+  camera.fitAspect = true
 
   return { scene, camera }
+}
+
+function fitCameraToAspect(camera, aspect) {
+  if (!camera.fitAspect) return
+  if (camera.isOrthographicCamera) {
+    const halfH = (camera.top - camera.bottom) / 2
+    const cx = (camera.left + camera.right) / 2
+    const halfW = halfH * aspect
+    camera.left = cx - halfW
+    camera.right = cx + halfW
+  } else if (camera.isPerspectiveCamera) {
+    camera.aspect = aspect
+  } else return
+  camera.updateProjectionMatrix()
 }
 
 export async function renderModelScene(scene, camera, args) {
   const baseWidth = args?.width ?? 256
   const baseHeight = args?.height ?? 256
   const { clearColor, clearAlpha } = parseBackground(args?.background)
+
+  fitCameraToAspect(camera, baseWidth / baseHeight)
 
   const animatedTextures = []
   if (args?.animated) {
@@ -807,6 +824,8 @@ export async function renderModelScene(scene, camera, args) {
 
   const width = args?.animatedWidth ?? baseWidth
   const height = args?.animatedHeight ?? baseHeight
+
+  fitCameraToAspect(camera, width / height)
 
   const sharpPixelLimit = 268402689
   const hardFrameCap = Math.floor(sharpPixelLimit / (width * height))
