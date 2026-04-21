@@ -86,6 +86,7 @@ Renders a block by its id using the resource pack's blockstates and models.
 | `animatedWidth` | Inherits from `width` | Width of the rendered output image when the output is animated, in pixels |
 | `animatedHeight` | Inherits from `height` | Height of the rendered output image when the output is animated, in pixels |
 | `animatedOutput` | | Options passed directly to the sharp encoder when the output is animated |
+| `maxAnimationFrames` | `4096` | Maximum number of frames in animated output. If a model's textures can't all loop cleanly within this many frames, the loop is truncated and shorter textures may get cut short |
 | `background` | transparent | See [Background](#background) |
 
 Default display:
@@ -103,7 +104,7 @@ Renders an item by id using its item definition.
 | `assets` | `[]` | The assets source |
 | `components` | `{}` | Item components used by the item definition (e.g. `{ using_item: true }` on a `bow` to show it drawn) |
 | `display` | `{ type: "fallback", display: "gui" }` | Display transform. See [Display transforms](#display-transforms) |
-| `path`, `format`, `output`, `width`, `height`, `animated`, `animatedWidth`, `animatedHeight`, `animatedOutput`, `background` | | Same as `renderBlock` |
+| `path`, `format`, `output`, `width`, `height`, `animated`, `animatedWidth`, `animatedHeight`, `animatedOutput`, `maxAnimationFrames`, `background` | | Same as `renderBlock` |
 
 ### `renderModel(args)`
 
@@ -114,7 +115,7 @@ Renders a custom model JSON directly, bypassing blockstate or item definition lo
 | `model` | `{}` | A model JSON object (inherits from `parent` if specified, supports all vanilla model features) |
 | `assets` | `[]` | The assets source |
 | `display` | Same as `renderBlock` | Display transform. See [Display transforms](#display-transforms) |
-| `path`, `format`, `output`, `width`, `height`, `animated`, `animatedWidth`, `animatedHeight`, `animatedOutput`, `background` | | Same as `renderBlock` |
+| `path`, `format`, `output`, `width`, `height`, `animated`, `animatedWidth`, `animatedHeight`, `animatedOutput`, `maxAnimationFrames`, `background` | | Same as `renderBlock` |
 
 ### Return value
 
@@ -361,7 +362,7 @@ Renders a scene to an image buffer. Takes all the same output options as `render
 |---|---|
 | `scene` | The three.js scene to render |
 | `camera` | The camera to render from |
-| `args` | `path`, `format`, `width`, `height`, `animated`, `animatedWidth`, `animatedHeight`, `background` - same as [`renderBlock`](#renderblockargs) |
+| `args` | `path`, `format`, `width`, `height`, `animated`, `animatedWidth`, `animatedHeight`, `maxAnimationFrames`, `background` - same as [`renderBlock`](#renderblockargs) |
 
 Returns an image buffer, or `{ buffer, format }` when `args.animated` is truthy.
 

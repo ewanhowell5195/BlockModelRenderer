@@ -809,7 +809,8 @@ export async function renderModelScene(scene, camera, args) {
   const height = args?.animatedHeight ?? baseHeight
 
   const sharpPixelLimit = 268402689
-  const maxFrameCount = Math.floor(sharpPixelLimit / (width * height))
+  const hardFrameCap = Math.floor(sharpPixelLimit / (width * height))
+  const maxFrameCount = Math.min(hardFrameCap, args?.maxAnimationFrames ?? 4096)
 
   let schedules, totalDuration, events, frameCount
   for (let maxSubFrames = 8; maxSubFrames >= 1; maxSubFrames--) {
@@ -830,7 +831,11 @@ export async function renderModelScene(scene, camera, args) {
       }
       return { tex, frames, times, total, boundaries }
     })
-    totalDuration = Math.max(...schedules.map(s => s.total))
+    totalDuration = schedules.reduce((acc, s) => {
+      let a = acc, b = s.total
+      while (b) [a, b] = [b, a % b]
+      return (acc * s.total) / a
+    }, 1)
 
     const eventSet = new Set()
     for (const s of schedules) {
@@ -845,6 +850,22 @@ export async function renderModelScene(scene, camera, args) {
     frameCount = events.length
 
     if (frameCount <= maxFrameCount) break
+  }
+
+  if (frameCount > maxFrameCount) {
+    const longest = Math.max(...schedules.map(s => s.total))
+    const cutoff = events[maxFrameCount]
+    const snapped = Math.floor(cutoff / longest) * longest
+    const idx = snapped > 0 ? events.indexOf(snapped) : -1
+    if (idx > 0) {
+      events = events.slice(0, idx)
+      totalDuration = snapped
+      frameCount = events.length
+    } else {
+      totalDuration = events[maxFrameCount]
+      events = events.slice(0, maxFrameCount)
+      frameCount = maxFrameCount
+    }
   }
 
   const delay = []
