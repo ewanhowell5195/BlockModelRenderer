@@ -1047,6 +1047,9 @@ const UNIQUE_DEFAULT_BLOCKSTATES = {
   },
   "bamboo": {
     "leaves": "none"
+  },
+  "light": {
+    level: 15
   }
 }
 
