@@ -1763,6 +1763,7 @@ export async function resolveModelData(assets, model) {
 
   delete merged.parent
   delete merged.model
+  if (merged.type === "block") delete merged.display
 
   return merged
 }

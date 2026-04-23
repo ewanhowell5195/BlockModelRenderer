@@ -309,7 +309,7 @@ Resolves a blockstate to a list of model references, picking variants or multipa
 | `assets` | The assets source |
 | `id` | The blockstate id |
 | `args.data` | Blockstate property values (e.g. `{ axis: "y", half: "top" }`) |
-| `args.ignoreAtlases` | Skip atlas membership rules for the returned models |
+| `args.ignoreAtlases` | Skip texture atlas membership rules for the returned models |
 
 Returns a list of model references, one per matching model.
 
@@ -323,7 +323,7 @@ Resolves an item definition to a list of model references, walking conditions, s
 | `id` | The item id |
 | `args.data` | Item components used by the definition |
 | `args.display` | Display context, used by tint colour resolution |
-| `args.ignoreAtlases` | Skip atlas membership rules for the returned models |
+| `args.ignoreAtlases` | Skip texture atlas membership rules for the returned models |
 
 Returns a list of model references.
 
@@ -350,7 +350,7 @@ The returned camera has a `fitAspect = true` flag that tells `renderModelScene` 
 
 Adds a resolved model's geometry and materials to an existing scene.
 
-Atlas rules are enforced here: if `model.type` is `"block"` or `"item"` and `model.ignore_atlas_restrictions` isn't set, the model is replaced with the missing-model placeholder when any face texture is in the wrong atlas. Set `model.ignore_atlas_restrictions = true` on the model to bypass.
+Texture atlas rules are enforced here: if `model.type` is `"block"` or `"item"` and `model.ignore_atlas_restrictions` isn't set, the model is replaced with the missing-model placeholder when any face texture is in the wrong atlas. Set `model.ignore_atlas_restrictions = true` on the model to bypass.
 
 | Argument | Description |
 |---|---|
@@ -439,8 +439,8 @@ In a few places the renderer accepts fields that aren't part of vanilla Minecraf
 | `double_sided` | `true` | Render all faces from both sides |
 | `tints` | `["#FF0000", "#00FF00"]` | Array of hex colour strings. Faces with a `tintindex` look up their tint from this array |
 | `shader` | `{ type: "end_portal", layers: 15 }` | Apply the end portal / end gateway shader to the model |
-| `type` | `"block"`, `"item"` | Which atlas rules to enforce |
-| `ignore_atlas_restrictions` | `true` | Skip atlas membership checks for this model, letting it reference textures from any atlas |
+| `type` | `"block"`, `"item"` | Which texture atlas rules to enforce. Block-type models use only the manually provided display settings. Model-defined displays are ignored since they are meant to apply to items, not blocks |
+| `ignore_atlas_restrictions` | `true` | Skip texture atlas membership checks for this model, letting it reference textures from any atlas |
 
 ### Blockstate JSON
 
