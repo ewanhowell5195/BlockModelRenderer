@@ -494,7 +494,7 @@ function applyFilterSource(src, sprites) {
   }
 }
 
-function sourceEmitsSprite(src, decomposed, entry) {
+function sourceEmitsSprite(src, decomposed, assets) {
   const type = normalize(src.type ?? "")
   const { namespace, spriteId } = decomposed
   if (type === "single") {
@@ -531,27 +531,8 @@ function sourceEmitsSprite(src, decomposed, entry) {
     if (!spriteId.startsWith(prefix)) return
     const rel = spriteId.slice(prefix.length)
     const diskPath = `assets/${namespace}/textures/${source ? source + "/" : ""}${rel}.png`
-    return entryHasFile(entry, diskPath)
+    return readFile(diskPath, assets).then(buf => !!buf)
   }
-}
-
-function entryHasFile(entry, diskPath) {
-  entry.__fileExistsCache ??= new Map()
-  if (entry.__fileExistsCache.has(diskPath)) return entry.__fileExistsCache.get(diskPath)
-  const p = (async () => {
-    if (entry.path) {
-      try { await fs.promises.access(path.join(entry.path, diskPath)); return true } catch {}
-      return
-    }
-    if (entry.read) {
-      try {
-        const data = await entry.read(diskPath)
-        if (data !== undefined && data !== null && data !== false) return true
-      } catch {}
-    }
-  })()
-  entry.__fileExistsCache.set(diskPath, p)
-  return p
 }
 
 function filterMatchesSprite(src, decomposed) {
@@ -577,9 +558,8 @@ async function isSpriteInAtlas(atlasId, spritePath, assets) {
       if (type === "filter") {
         if (filterMatchesSprite(src, decomposed)) present = false
       } else {
-        const emits = sourceEmitsSprite(src, decomposed, entry)
-        const result = typeof emits?.then === "function" ? await emits : emits
-        if (result) present = true
+        const emits = sourceEmitsSprite(src, decomposed, assets)
+        if ((typeof emits?.then === "function" ? await emits : emits)) present = true
       }
     }
   }
@@ -1223,7 +1203,8 @@ export async function parseBlockstate(assets, blockstate, args) {
     models.push({
       model: "minecraft:block/water",
       type: "block",
-      tints: ["#3F76E4"]
+      tints: ["#3F76E4"],
+      scale: [0.999, 0.999, 0.999]
     })
   }
 
